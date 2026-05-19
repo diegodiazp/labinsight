@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Google AdSense — reemplaza ca-pub-XXXXXXXXXXXXXXXX con tu Publisher ID real -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 <style>
 *{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box}
 
@@ -46,9 +48,29 @@
 .modal-box{transform:scale(.95) translateY(16px);transition:transform .3s ease}
 .modal-wrap.open .modal-box{transform:scale(1) translateY(0)}
 
+/* AdSense — ocultos por defecto, JS los muestra solo si AdSense retorna un anuncio */
+.ad-wrap{display:none}
+.ad-sidebar-wrap{display:none;position:fixed;top:50%;transform:translateY(-50%);width:160px;z-index:40}
+.ad-sidebar-left{left:8px}
+.ad-sidebar-right{right:8px}
+@media(max-width:1439px){.ad-sidebar-wrap{display:none!important}}
+
 </style>
 </head>
 <body class="bg-white text-slate-900">
+
+<!-- Ad: Sidebar izquierdo (desktop ≥1440px) -->
+<div class="ad-sidebar-wrap ad-sidebar-left">
+  <ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"></ins>
+</div>
+<!-- Ad: Sidebar derecho (desktop ≥1440px) -->
+<div class="ad-sidebar-wrap ad-sidebar-right">
+  <ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"></ins>
+</div>
 
 <!-- ══ NAVBAR ══════════════════════════════════════ -->
 <nav id="nav" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-4">
@@ -122,6 +144,15 @@ function declineCookies(){
     </div>
   </div>
 </section>
+
+<!-- Ad: Top banner -->
+<div class="ad-wrap bg-slate-50 py-2">
+  <ins class="adsbygoogle" style="display:block"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+</div>
 
 <!-- ══ UPLOAD SECTION ═══════════════════════════════ -->
 <section id="upload-section" class="py-16 px-4 bg-white">
@@ -429,6 +460,15 @@ Glucosa: 95 mg/dL (Rango normal: 70-100)"></textarea>
   </section>
 
 </div><!-- end resultsSection -->
+
+<!-- Ad: Bottom banner -->
+<div class="ad-wrap bg-slate-50 py-2">
+  <ins class="adsbygoogle" style="display:block"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+</div>
 
 <!-- ══ FOOTER ════════════════════════════════════════ -->
 <footer class="bg-slate-900 text-slate-400 py-10 px-4 text-center text-sm">
@@ -1876,6 +1916,27 @@ function renderCharts(analyzed) {
 // ═══════════════════════════════════════════
 // 7. MAIN ANALYSIS FLOW
 // ═══════════════════════════════════════════
+// ── AdSense ────────────────────────────────────────────
+// Oculta el contenedor si AdSense no retorna anuncio; lo muestra si sí retorna.
+function initAds() {
+  document.querySelectorAll('.adsbygoogle').forEach(ins => {
+    const wrap = ins.closest('.ad-wrap, .ad-sidebar-wrap');
+    if (!wrap) return;
+
+    // Observa el atributo data-ad-status que AdSense escribe al resolver
+    const mo = new MutationObserver(() => {
+      const status = ins.getAttribute('data-ad-status');
+      if (status === 'done') wrap.style.display = '';
+      else if (status === 'unfilled') wrap.style.display = 'none';
+    });
+    mo.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+    catch(e) { console.warn('AdSense push error', e); }
+  });
+}
+document.addEventListener('DOMContentLoaded', initAds);
+
 async function runAnalysis() {
   const text = state.tab === 'file' ? state.pdfText : document.getElementById('textInput').value;
 

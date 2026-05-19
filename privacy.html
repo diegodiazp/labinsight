@@ -6,6 +6,8 @@
   <title>Política de Privacidad — LabInsight</title>
   <meta name="description" content="Política de privacidad de LabInsight. Cómo manejamos tus datos y el uso de cookies de publicidad."/>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google AdSense — reemplaza ca-pub-XXXXXXXXXXXXXXXX con tu Publisher ID real -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     body{font-family:'Inter',sans-serif}
@@ -25,6 +27,15 @@
       <a href="index.html" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">← Volver a la app</a>
     </div>
   </header>
+
+  <!-- Ad: Top responsive -->
+  <div class="ad-wrap max-w-3xl mx-auto px-6 pt-6" style="display:none">
+    <ins class="adsbygoogle" style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  </div>
 
   <!-- Content -->
   <main class="max-w-3xl mx-auto px-6 py-12">
@@ -92,6 +103,15 @@
     </div>
   </main>
 
+  <!-- Ad: Bottom responsive -->
+  <div class="ad-wrap max-w-3xl mx-auto px-6 pb-6" style="display:none">
+    <ins class="adsbygoogle" style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  </div>
+
   <!-- Footer -->
   <footer class="bg-slate-900 text-slate-400 py-8 px-4 text-center text-sm mt-16">
     <div class="flex items-center justify-center gap-2 mb-3">
@@ -103,5 +123,22 @@
     <p class="text-xs text-slate-500">© 2026 LabInsight · <a href="privacy.html" class="hover:text-slate-300 underline">Política de Privacidad</a></p>
   </footer>
 
+<script>
+function initAds() {
+  document.querySelectorAll('.adsbygoogle').forEach(ins => {
+    const wrap = ins.closest('.ad-wrap');
+    if (!wrap) return;
+    const mo = new MutationObserver(() => {
+      const status = ins.getAttribute('data-ad-status');
+      if (status === 'done') wrap.style.display = '';
+      else if (status === 'unfilled') wrap.style.display = 'none';
+    });
+    mo.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+    catch(e) { console.warn('AdSense push error', e); }
+  });
+}
+document.addEventListener('DOMContentLoaded', initAds);
+</script>
 </body>
 </html>
