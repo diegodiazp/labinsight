@@ -1,0 +1,2206 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabInsight — Analiza tus resultados de laboratorio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gradMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes barFill{from{width:0}to{width:var(--w)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)}60%{box-shadow:0 0 0 14px rgba(99,102,241,0)}}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}70%{box-shadow:0 0 0 12px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+.alarm-pulse{animation:pulseRing 1.8s ease-in-out infinite!important;transition:none!important}
+@keyframes dashMove{to{stroke-dashoffset:-28}}
+
+.hero-bg{background:linear-gradient(-45deg,#eef2ff,#f0fdf4,#faf5ff,#ecfdf5);background-size:400% 400%;animation:gradMove 10s ease infinite}
+.fade-up{animation:fadeUp .55s ease-out both}
+.d1{animation-delay:.05s}.d2{animation-delay:.12s}.d3{animation-delay:.19s}.d4{animation-delay:.26s}
+.spinner{animation:spin .8s linear infinite}
+.bar{animation:barFill 1s ease-out both;animation-delay:.3s}
+.cta-pulse{animation:pulse 2.4s ease-in-out infinite}
+.card{transition:transform .2s ease,box-shadow .2s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.09)}
+
+.drop-zone-border{stroke:#c7d2fe;stroke-dasharray:8 6}
+.drop-zone-border.drag-over{stroke:#6366f1}
+.drop-zone-border rect{animation:dashMove 1.4s linear infinite}
+
+.tab-btn{transition:all .2s ease}
+.tab-btn.active{background:#6366f1;color:#fff;box-shadow:0 2px 12px rgba(99,102,241,.3)}
+.tab-btn:not(.active){color:#64748b}
+
+.expand-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.expand-body.open{max-height:3000px}
+.chevron{transition:transform .3s ease}
+.chevron.open{transform:rotate(180deg)}
+
+.modal-wrap{opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-wrap.open{opacity:1;pointer-events:all}
+.modal-box{transform:scale(.95) translateY(16px);transition:transform .3s ease}
+.modal-wrap.open .modal-box{transform:scale(1) translateY(0)}
+
+/* Dark */
+.dark body{background:#0f172a;color:#e2e8f0}
+.dark .bg-white{background:#1e293b!important}
+.dark .bg-slate-50,.dark .bg-gray-50{background:#0f172a!important}
+.dark .bg-gray-100{background:#1e293b!important}
+.dark .text-slate-900,.dark .text-gray-900{color:#f1f5f9!important}
+.dark .text-slate-700,.dark .text-gray-700{color:#cbd5e1!important}
+.dark .text-slate-600,.dark .text-gray-600{color:#94a3b8!important}
+.dark .text-slate-500,.dark .text-gray-500{color:#64748b!important}
+.dark .border-slate-200,.dark .border-gray-200,.dark .border-gray-100{border-color:#334155!important}
+.dark input,.dark textarea,.dark select{background:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
+.dark .shadow,.dark .shadow-lg,.dark .shadow-sm{box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
+.dark .hero-bg{background:linear-gradient(-45deg,#1e1b4b,#052e16,#0f172a,#1e1b4b);background-size:400% 400%;animation:gradMove 10s ease infinite}
+.dark .bg-amber-50{background:#1c1200!important}
+.dark .bg-indigo-50{background:#1e1b4b!important}
+.dark .bg-green-50{background:#052e16!important}
+.dark .bg-red-50{background:#2d0d0d!important}
+.dark .bg-yellow-50{background:#1c1a00!important}
+</style>
+</head>
+<body class="bg-white text-slate-900">
+
+<!-- ══ NAVBAR ══════════════════════════════════════ -->
+<nav id="nav" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-4">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-2.5 cursor-pointer" onclick="scrollToTop()">
+      <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <span class="text-xl font-extrabold text-indigo-600 tracking-tight">LabInsight</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="toggleDark()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" title="Modo oscuro">
+        <svg id="moonIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="sunIcon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      </button>
+      <a href="#upload-section" class="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">Analizar →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ HERO ════════════════════════════════════════ -->
+<section class="hero-bg min-h-screen flex items-center pt-24 pb-16 px-4">
+  <div class="max-w-5xl mx-auto w-full text-center">
+    <div class="inline-flex items-center gap-2 bg-white/70 border border-indigo-100 text-indigo-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-6 shadow-sm fade-up">
+      🔬 Análisis inteligente de laboratorio
+    </div>
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight mb-5 fade-up d1">
+      Entiende tus exámenes<br>
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-emerald-500">en lenguaje simple</span>
+    </h1>
+    <p class="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 fade-up d2">
+      Pega o sube tus resultados de laboratorio y recibe un análisis visual, completo y personalizado — sin complicaciones.
+    </p>
+    <div class="fade-up d3">
+      <a href="#upload-section" class="cta-pulse inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold px-10 py-4 rounded-2xl transition-colors shadow-lg">
+        Comenzar análisis →
+      </a>
+    </div>
+    <div class="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-slate-500 mt-10 fade-up d4">
+      <span>📊 Análisis visual</span>
+      <span>🎯 Plan de acción</span>
+      <span>🔒 100% privado</span>
+      <span>⚡ Instantáneo</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ UPLOAD SECTION ═══════════════════════════════ -->
+<section id="upload-section" class="py-16 px-4 bg-white">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- Title -->
+    <div class="text-center mb-10">
+      <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Sube tus resultados</h2>
+      <p class="text-slate-500 text-lg">Sólo necesitas 3 pasos simples</p>
+    </div>
+
+    <!-- STEP 1: Disclaimer -->
+    <div class="mb-6 bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+      <div class="flex gap-4 items-start">
+        <div class="shrink-0 w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="#d97706"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-bold text-amber-800 mb-1 text-sm">Aviso médico importante</p>
+          <p class="text-amber-700 text-sm leading-relaxed mb-3">Este análisis es <strong>educativo e informativo</strong>. No reemplaza la consulta con tu médico ni constituye un diagnóstico. Ante cualquier hallazgo importante, consulta siempre a un profesional de la salud.</p>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="disclaimerCk" onchange="checkReady()" class="w-5 h-5 rounded accent-indigo-600 cursor-pointer shrink-0">
+            <span class="text-sm font-semibold text-amber-900">Entiendo que este análisis no reemplaza la atención médica</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Input tabs -->
+    <div class="mb-6">
+      <p class="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Paso 1 — Ingresa tus resultados</p>
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-4">
+        <button class="tab-btn active text-sm font-bold px-5 py-2.5 rounded-xl" id="tab-file" onclick="switchTab('file')">📎 Subir archivo</button>
+        <button class="tab-btn text-sm font-bold px-5 py-2.5 rounded-xl bg-gray-100" id="tab-text" onclick="switchTab('text')">📋 Pegar texto</button>
+      </div>
+
+      <!-- Tab: File (DEFAULT) -->
+      <div id="panel-file" class="tab-panel">
+        <div id="dropZone" class="relative cursor-pointer rounded-2xl bg-slate-50 transition-all duration-300"
+             onclick="document.getElementById('fileInput').click()"
+             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg" style="border-radius:16px">
+            <rect id="dropBorder" class="drop-zone-border" width="100%" height="100%" fill="none" rx="16" ry="16" stroke-width="2"/>
+          </svg>
+          <div id="dropEmpty" class="py-12 text-center">
+            <div class="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <p class="font-bold text-slate-700 mb-1">Arrastra tu archivo aquí</p>
+            <p class="text-sm text-slate-400 mb-4">o haz clic para seleccionar desde tu dispositivo</p>
+            <div class="flex flex-wrap justify-center gap-2">
+              <span class="bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full">PDF</span>
+              <span class="bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full">JPG</span>
+              <span class="bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full">PNG</span>
+              <span class="bg-indigo-100 text-indigo-600 text-xs font-semibold px-3 py-1 rounded-full">HEIC</span>
+              <span class="bg-slate-200 text-slate-500 text-xs font-medium px-3 py-1 rounded-full">Máx. 10 MB</span>
+            </div>
+          </div>
+          <div id="dropLoaded" class="py-8 text-center hidden">
+            <div id="dropLoadedIcon" class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <p id="loadedFileName" class="font-bold text-slate-700 mb-1"></p>
+            <p id="loadedFileSize" class="text-xs text-slate-400 mb-2"></p>
+            <div class="flex items-center justify-center gap-3">
+              <button onclick="clearFile(event)" class="text-xs text-red-400 hover:text-red-600 transition-colors font-medium">Quitar archivo ✕</button>
+              <button onclick="showExtractedText(event)" class="text-xs text-indigo-500 hover:text-indigo-700 transition-colors font-medium">🔍 Ver texto extraído</button>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*" onchange="onFileSelect(event)">
+        <p class="text-xs text-slate-400 mt-2 ml-1">💡 Para imágenes: asegúrate de que el texto sea legible. Si el resultado no es preciso, usa "Pegar texto".</p>
+      </div>
+
+      <!-- Tab: Text -->
+      <div id="panel-text" class="tab-panel hidden">
+        <div class="relative bg-slate-50 border-2 border-slate-200 rounded-2xl p-1">
+          <textarea id="textInput" onInput="checkReady()" rows="10"
+            class="w-full bg-transparent p-4 text-sm text-slate-700 resize-none focus:outline-none leading-relaxed placeholder-slate-400"
+            placeholder="Copia y pega aquí el texto de tus resultados de laboratorio.
+
+Ejemplo:
+GLUCOSA                    95.38    mg/dl     70    100
+COLESTEROL TOTAL          171.87    mg/dl
+HEMOGLOBINA GLICOSILADA      5.2    %       4.8    5.6
+TSH                          0.03   uUI/ml  0.27   4.20
+CREATININA                   1.22   mg/dl   0.67   1.17
+
+También funciona con formatos como:
+Glucosa: 95 mg/dL (Rango normal: 70-100)"></textarea>
+          <div class="flex justify-between items-center px-4 pb-3">
+            <span id="charCount" class="text-xs text-slate-400">0 caracteres</span>
+            <button onclick="clearText()" class="text-xs text-slate-400 hover:text-red-500 transition-colors">Limpiar ✕</button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 ml-1">💡 Puedes abrir el PDF del laboratorio, seleccionar todo el texto (Ctrl+A) y pegarlo aquí.</p>
+      </div>
+    </div>
+
+    <!-- STEP 3: Patient data -->
+    <div class="mb-8">
+      <p class="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Paso 2 — Tus datos <span class="font-normal normal-case text-slate-400">(opcional, mejora el análisis)</span></p>
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Nombre</label>
+            <input id="patName" type="text" placeholder="Tu nombre" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Edad</label>
+            <input id="patAge" type="number" placeholder="Ej: 45" min="1" max="120" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Sexo</label>
+            <select id="patSex" onchange="checkReady()" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">—</option>
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Peso (kg)</label>
+            <input id="patWeight" type="number" placeholder="Ej: 70" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Antecedentes médicos</label>
+            <input id="patConditions" type="text" placeholder="Ej: Hipertensión, Diabetes tipo 2, Infarto 2019..." class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Medicamentos actuales</label>
+            <input id="patMeds" type="text" placeholder="Ej: Metformina 850mg, ASA 100mg, Losartán 50mg..." class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYZE BUTTON -->
+    <div class="text-center">
+      <button id="analyzeBtn" onclick="runAnalysis()" disabled
+        class="w-full sm:w-auto cta-pulse bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-extrabold px-14 py-5 rounded-2xl transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:animation-none">
+        🔬 Analizar mis resultados
+      </button>
+      <p id="btnHint" class="text-sm text-slate-400 mt-3">Acepta el aviso médico y agrega tus resultados para continuar</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LOADING ══════════════════════════════════════ -->
+<div id="loadingSection" class="hidden py-20 px-4 text-center bg-slate-50">
+  <div class="w-14 h-14 border-4 border-indigo-200 border-t-indigo-600 rounded-full spinner mx-auto mb-5"></div>
+  <p class="text-xl font-bold text-slate-700">Analizando tus resultados…</p>
+  <p class="text-slate-400 mt-2">Esto puede tomar unos segundos</p>
+</div>
+
+<!-- ══ RESULTS SECTION ══════════════════════════════ -->
+<div id="resultsSection" class="hidden">
+
+  <!-- Urgent Alert Banner -->
+  <div id="urgentBanner" class="hidden bg-red-600 text-white px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3 max-w-5xl mx-auto w-full">
+      <span class="text-2xl shrink-0">🚨</span>
+      <div><span class="font-bold">HALLAZGO URGENTE: </span><span id="urgentBannerText" class="text-sm sm:text-base"></span></div>
+    </div>
+    <button onclick="document.getElementById('urgentBanner').classList.add('hidden')" class="ml-4 text-white/80 hover:text-white text-xl leading-none shrink-0">✕</button>
+  </div>
+
+  <!-- Header / Score -->
+  <section class="hero-bg py-12 px-4">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-col lg:flex-row gap-8 items-center bg-white/80 backdrop-blur rounded-3xl shadow-xl p-7">
+        <div class="flex-1 w-full">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl">👤</div>
+            <div>
+              <h2 id="rPatientName" class="text-2xl font-extrabold text-slate-900">Reporte de Salud</h2>
+              <p id="rPatientSub" class="text-slate-500 text-sm"></p>
+            </div>
+          </div>
+          <div id="rSummaryBox" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 leading-relaxed mb-3">
+            <strong>Resumen ejecutivo:</strong> <span id="rSummary"></span>
+          </div>
+          <p class="text-xs text-slate-400">⚕️ Análisis educativo. Los hallazgos deben ser evaluados por tu médico tratante.</p>
+        </div>
+        <div class="flex flex-col items-center gap-2 shrink-0">
+          <div class="relative w-40 h-40">
+            <canvas id="gaugeChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="scoreNum" class="text-5xl font-extrabold">0</span>
+              <span class="text-xs text-slate-500 font-medium">de 100</span>
+            </div>
+          </div>
+          <p id="scoreLabel" class="text-lg font-bold"></p>
+          <p id="scoreStats" class="text-xs text-slate-400 text-center"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Category Cards -->
+  <section class="py-10 px-4 bg-slate-50">
+    <div class="max-w-5xl mx-auto">
+      <h3 class="text-xl font-extrabold text-slate-900 mb-4">Resumen por Categoría</h3>
+      <div id="categoryGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    </div>
+  </section>
+
+  <!-- Results Table -->
+  <section class="py-10 px-4 bg-white">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center mb-5">
+        <h3 class="text-xl font-extrabold text-slate-900">Todos mis resultados</h3>
+        <div class="flex flex-wrap gap-2">
+          <select id="filterCat" onchange="applyFilter()" class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="all">Todas las categorías</option>
+            <option value="lipidos">🫀 Lípidos</option>
+            <option value="glucosa">🍬 Glucosa</option>
+            <option value="hematologia">🩸 Hematología</option>
+            <option value="higado">🤎 Hígado</option>
+            <option value="rinon">🫘 Riñón</option>
+            <option value="tiroides">🦋 Tiroides</option>
+            <option value="vitaminas">☀️ Vitaminas</option>
+            <option value="minerales">⚡ Minerales</option>
+            <option value="inflamacion">🔥 Inflamación</option>
+            <option value="otros">🔬 Otros</option>
+          </select>
+          <select id="filterStatus" onchange="applyFilter()" class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="all">Todos los estados</option>
+            <option value="alarm">🔴 Alarma</option>
+            <option value="attention">⚠️ Atención</option>
+            <option value="normal">✅ Normal</option>
+          </select>
+        </div>
+      </div>
+      <div class="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 border-b border-gray-100">
+            <tr>
+              <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Examen</th>
+              <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Mi Valor</th>
+              <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Rango</th>
+              <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wide">Estado</th>
+              <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wide hidden lg:table-cell w-48">Posición</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Findings -->
+  <section class="py-10 px-4 bg-slate-50" id="findingsSection">
+    <div class="max-w-5xl mx-auto">
+      <h3 class="text-xl font-extrabold text-slate-900 mb-4">Hallazgos Importantes</h3>
+      <div id="findingsContainer" class="space-y-4"></div>
+      <div id="noFindings" class="hidden text-center py-12 text-slate-400">
+        <div class="text-5xl mb-3">🎉</div>
+        <p class="text-lg font-bold text-slate-700">¡Excelentes resultados!</p>
+        <p>Todos tus valores analizados están dentro del rango normal.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Action Plan -->
+  <section class="py-10 px-4 bg-white">
+    <div class="max-w-5xl mx-auto">
+      <h3 class="text-xl font-extrabold text-slate-900 mb-2">Tu Plan de Acción</h3>
+      <p class="text-slate-500 text-sm mb-5">Recomendaciones personalizadas basadas en tus resultados</p>
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="tab-btn active text-sm font-bold px-4 py-2.5 rounded-xl" onclick="showPlanTab('diet',this)">🥗 Alimentación</button>
+        <button class="tab-btn text-sm font-bold px-4 py-2.5 rounded-xl bg-gray-100" onclick="showPlanTab('exercise',this)">🏃 Ejercicio</button>
+        <button class="tab-btn text-sm font-bold px-4 py-2.5 rounded-xl bg-gray-100" onclick="showPlanTab('supps',this)">💊 Suplementos</button>
+        <button class="tab-btn text-sm font-bold px-4 py-2.5 rounded-xl bg-gray-100" onclick="showPlanTab('lifestyle',this)">😴 Hábitos</button>
+        <button class="tab-btn text-sm font-bold px-4 py-2.5 rounded-xl bg-gray-100" onclick="showPlanTab('followup',this)">📅 Seguimiento</button>
+      </div>
+      <div id="planContent"></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="py-10 px-4 bg-slate-50">
+    <div class="max-w-5xl mx-auto">
+      <h3 class="text-xl font-extrabold text-slate-900 mb-5">Visualización</h3>
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h4 class="font-bold text-slate-700 mb-4">Salud por Categoría</h4>
+          <canvas id="radarChart" height="260"></canvas>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <h4 class="font-bold text-slate-700 mb-4">Posición de tus valores</h4>
+          <canvas id="barChart" height="260"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Analyze Again -->
+  <section class="py-10 px-4 bg-white text-center">
+    <button onclick="resetAll()" class="border-2 border-indigo-600 text-indigo-600 font-bold px-8 py-3.5 rounded-2xl hover:bg-indigo-50 transition-colors text-base">
+      ← Analizar otros resultados
+    </button>
+  </section>
+
+</div><!-- end resultsSection -->
+
+<!-- ══ FOOTER ════════════════════════════════════════ -->
+<footer class="bg-slate-900 text-slate-400 py-10 px-4 text-center text-sm">
+  <div class="flex items-center justify-center gap-2 mb-3">
+    <div class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <span class="text-white font-extrabold text-base">LabInsight</span>
+  </div>
+  <p class="italic text-slate-400 mb-3">Tu salud, en tu idioma.</p>
+  <p class="text-xs text-slate-500 max-w-xl mx-auto">Este servicio es educativo e informativo. No constituye diagnóstico médico ni reemplaza la consulta con un profesional de la salud. Ningún dato es almacenado. © 2026 LabInsight.</p>
+</footer>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT — Data + Engine + UI
+══════════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════
+// 1. REFERENCE RANGES & KNOWLEDGE BASE
+// ═══════════════════════════════════════════
+const MARKERS = {
+  glucosa:{name:'Glucosa en Ayunas',cat:'glucosa',unit:'mg/dL',min:70,max:100,alarmLow:50,alarmHigh:200,
+    aliases:['glucosa','glucose','glicemia','glycemia','azúcar','azucar en sangre'],
+    what:'La glucosa es el azúcar principal en tu sangre. Es la energía que usan todas las células de tu cuerpo.',
+    highMeaning:'Un nivel alto puede indicar resistencia a la insulina, prediabetes o diabetes.',
+    lowMeaning:'Un nivel bajo puede causar mareo, debilidad y confusión.',
+    highCauses:['Ayuno insuficiente antes del examen','Prediabetes o diabetes','Estrés agudo','Medicamentos como corticoides'],
+    lowCauses:['Exceso de insulina o hipoglucemiantes','Ayuno prolongado','Ejercicio intenso sin comer'],
+    highSymptoms:'Sed excesiva, orinar seguido, fatiga, visión borrosa',
+    lowSymptoms:'Temblores, sudor frío, mareo, palpitaciones, hambre súbita'},
+  hba1c:{name:'Hemoglobina Glicosilada (HbA1c)',cat:'glucosa',unit:'%',min:4.8,max:5.6,alarmHigh:6.5,
+    aliases:['hemoglobina glicosilada','hba1c','hb a1c','glucosilada','a1c','glicohemoglobina'],
+    what:'Refleja el promedio de azúcar en sangre de los últimos 2-3 meses. Es el mejor indicador de control glucémico.',
+    highMeaning:'Entre 5.7-6.4% indica prediabetes. Por encima de 6.5% indica diabetes.',
+    lowMeaning:'Valores muy bajos pueden indicar anemia hemolítica.',
+    highCauses:['Diabetes o prediabetes','Dieta alta en azúcares y carbohidratos refinados','Sedentarismo'],
+    lowCauses:['Anemia hemolítica','Esplenomegalia','Embarazo'],
+    highSymptoms:'Sed, orinar frecuentemente, fatiga, visión borrosa, cicatrización lenta',
+    lowSymptoms:'Generalmente sin síntomas'},
+  colesterol_total:{name:'Colesterol Total',cat:'lipidos',unit:'mg/dL',min:0,max:200,alarmHigh:240,
+    aliases:['colesterol total','total cholesterol','colesterol'],
+    what:'El colesterol es una grasa necesaria para el cuerpo, pero en exceso se acumula en las arterias.',
+    highMeaning:'Niveles altos aumentan el riesgo de enfermedades del corazón y ACV.',
+    lowMeaning:'El colesterol muy bajo es raro pero puede asociarse a problemas de absorción.',
+    highCauses:['Dieta rica en grasas saturadas','Herencia familiar','Sedentarismo','Hipotiroidismo'],
+    lowCauses:['Malnutrición','Hipertiroidismo','Enfermedad hepática grave'],
+    highSymptoms:'Generalmente sin síntomas — actúa silenciosamente',
+    lowSymptoms:'Raramente sintomático'},
+  ldl:{name:'LDL Colesterol ("Malo")',cat:'lipidos',unit:'mg/dL',min:0,max:130,alarmHigh:160,
+    aliases:['ldl','colesterol ldl','c-ldl','ldl colesterol','ldl calculado','ldl no calculado','colesterol ldl - no calculado'],
+    what:'El LDL lleva el colesterol desde el hígado a las arterias. En exceso forma placas que las obstruyen.',
+    highMeaning:'Aumenta el riesgo de infarto y ACV al obstruir las arterias coronarias.',
+    lowMeaning:'Un LDL bajo generalmente es favorable, especialmente en personas con riesgo cardiovascular.',
+    highCauses:['Dieta alta en grasas saturadas y trans','Herencia familiar','Obesidad','Sedentarismo','Hipotiroidismo'],
+    lowCauses:['Medicación (estatinas, PCSK9 inhibidores)','Dieta vegetariana estricta','Hipertiroidismo'],
+    highSymptoms:'Sin síntomas directos — detectado solo en exámenes',
+    lowSymptoms:'Generalmente sin síntomas'},
+  hdl:{name:'HDL Colesterol ("Bueno")',cat:'lipidos',unit:'mg/dL',
+    minM:40,maxM:999,minF:50,maxF:999,min:40,max:999,alarmLow:35,
+    aliases:['hdl','colesterol hdl','c-hdl','hdl colesterol'],
+    what:'El HDL recoge el exceso de colesterol de las arterias y lo lleva al hígado para eliminarlo. Es el colesterol protector.',
+    highMeaning:'Un HDL alto es muy favorable — mayor protección cardiovascular.',
+    lowMeaning:'Un HDL bajo aumenta el riesgo cardiovascular, incluso si el LDL está normal.',
+    highCauses:['Ejercicio aeróbico regular','Consumo moderado de alcohol','Genética favorable'],
+    lowCauses:['Sedentarismo','Tabaquismo','Obesidad','Dieta alta en carbohidratos refinados','Genética'],
+    highSymptoms:'No hay síntomas — es un hallazgo positivo',
+    lowSymptoms:'Sin síntomas directos — mayor riesgo silencioso'},
+  trigliceridos:{name:'Triglicéridos',cat:'lipidos',unit:'mg/dL',min:0,max:150,alarmHigh:500,
+    aliases:['trigliceridos','triglicéridos','triglycerides','tg'],
+    what:'Los triglicéridos son grasas en la sangre provenientes de lo que comemos y del azúcar que el cuerpo convierte en grasa.',
+    highMeaning:'Niveles altos aumentan el riesgo de pancreatitis y enfermedad cardiovascular.',
+    lowMeaning:'Triglicéridos bajos son generalmente favorables.',
+    highCauses:['Dieta alta en azúcares y harinas refinadas','Exceso de alcohol','Diabetes mal controlada','Hipotiroidismo','Obesidad'],
+    lowCauses:['Dieta muy baja en grasas','Desnutrición','Hipertiroidismo'],
+    highSymptoms:'Generalmente sin síntomas. Con niveles muy altos: dolor abdominal (pancreatitis)',
+    lowSymptoms:'Sin síntomas'},
+  alt:{name:'ALT / TGP (Enzima Hepática)',cat:'higado',unit:'U/L',min:5,max:41,alarmHigh:200,
+    aliases:['alt','tgp','alat','alanino','alanino amino transferasa','alanino aminotransferasa'],
+    what:'La ALT es una enzima producida por las células del hígado. Cuando el hígado está inflamado o dañado, libera más ALT al torrente sanguíneo.',
+    highMeaning:'Indica inflamación o daño en el hígado.',
+    lowMeaning:'Un valor bajo no es preocupante.',
+    highCauses:['Consumo de alcohol','Hígado graso (esteatosis)','Medicamentos hepatotóxicos','Hepatitis viral','Ejercicio muy intenso reciente'],
+    lowCauses:['No aplica clínicamente'],
+    highSymptoms:'Fatiga, náuseas, orina oscura, ictericia (ojos/piel amarillos) en casos graves',
+    lowSymptoms:'Sin síntomas'},
+  ast:{name:'AST / TGO (Enzima Hepática)',cat:'higado',unit:'U/L',min:0,max:40,alarmHigh:200,
+    aliases:['ast','tgo','asat','aspartato','aspartato amino transferasa','aspartato aminotransferasa'],
+    what:'La AST es otra enzima hepática. También puede elevarse con daño muscular o cardíaco.',
+    highMeaning:'Eleva al haber daño en hígado, músculo o corazón.',
+    lowMeaning:'No preocupante.',
+    highCauses:['Daño hepático','Daño muscular (ejercicio intenso)','Infarto cardíaco','Medicamentos','Alcohol'],
+    lowCauses:['No aplica'],
+    highSymptoms:'Similar a ALT; puede acompañarse de dolor muscular si es de origen muscular',
+    lowSymptoms:'Sin síntomas'},
+  creatinina:{name:'Creatinina',cat:'rinon',unit:'mg/dL',
+    minM:0.67,maxM:1.17,minF:0.5,maxF:0.9,min:0.67,max:1.17,alarmHigh:4.0,
+    aliases:['creatinina','creatinine','creatinina en suero'],
+    what:'La creatinina es un residuo del trabajo muscular que los riñones filtran. Su nivel refleja qué tan bien filtran tus riñones.',
+    highMeaning:'Puede indicar reducción de la función renal.',
+    lowMeaning:'Valores bajos son poco significativos, pueden verse en personas con poca masa muscular.',
+    highCauses:['Alta masa muscular (fisiológico)','Deshidratación','Daño renal','Ejercicio intenso previo','Dieta alta en proteínas','Medicamentos nefrotóxicos'],
+    lowCauses:['Poca masa muscular','Embarazo','Dieta baja en proteínas'],
+    highSymptoms:'Con daño renal significativo: hinchazón en pies, fatiga, orina espumosa',
+    lowSymptoms:'Sin síntomas'},
+  hemoglobina:{name:'Hemoglobina',cat:'hematologia',unit:'g/dL',
+    minM:14,maxM:17.5,minF:12,maxF:16,min:14,max:17.5,alarmLow:8,alarmHigh:19,
+    aliases:['hemoglobina','haemoglobin','hgb','hb'],
+    what:'La hemoglobina es la proteína en los glóbulos rojos que transporta el oxígeno a todos los tejidos del cuerpo.',
+    highMeaning:'Exceso de hemoglobina engrosa la sangre, aumentando el riesgo de coágulos.',
+    lowMeaning:'Indica anemia: el cuerpo no recibe suficiente oxígeno.',
+    highCauses:['Deshidratación','Vivir en altitud elevada','Apnea del sueño','Policitemia vera','Tabaquismo'],
+    lowCauses:['Deficiencia de hierro','Deficiencia de B12 o folato','Sangrado crónico','Enfermedad crónica','Genética (talasemia)'],
+    highSymptoms:'Dolor de cabeza, enrojecimiento facial, visión borrosa',
+    lowSymptoms:'Cansancio, palidez, falta de aire, mareos, palpitaciones'},
+  hematocrito:{name:'Hematocrito',cat:'hematologia',unit:'%',
+    minM:40,maxM:52,minF:36,maxF:46,min:40,max:52,
+    aliases:['hematocrito','hematocrit','hto','htc'],
+    what:'El hematocrito mide qué porcentaje de tu sangre son glóbulos rojos. Es complementario a la hemoglobina.',
+    highMeaning:'Sangre más espesa, mayor riesgo de coágulos.',
+    lowMeaning:'Anemia — menos capacidad de transporte de oxígeno.',
+    highCauses:['Deshidratación','Altitud','Apnea del sueño','Tabaquismo','Policitemia vera'],
+    lowCauses:['Anemia por deficiencia de hierro','Pérdida de sangre','Enfermedades crónicas'],
+    highSymptoms:'Dolor de cabeza, cara roja, sensación de pesadez',
+    lowSymptoms:'Cansancio, palidez, falta de aire'},
+  globulos_rojos:{name:'Glóbulos Rojos (RBC)',cat:'hematologia',unit:'x10⁶/μL',
+    minM:4.5,maxM:6.2,minF:4.0,maxF:5.4,min:4.5,max:6.2,
+    aliases:['globulos rojos','recuento globulos rojos','recuento de eritrocitos','eritrocitos','rbc','red blood cells','glóbulos rojos','recuento eritrocitos'],
+    what:'Los glóbulos rojos son las células que transportan el oxígeno por la sangre.',
+    highMeaning:'Demasiados glóbulos rojos aumentan la viscosidad de la sangre.',
+    lowMeaning:'Pocos glóbulos rojos indican anemia.',
+    highCauses:['Deshidratación','Altitud','Apnea','Policitemia vera'],
+    lowCauses:['Anemia','Sangrado','Enfermedades de médula ósea'],
+    highSymptoms:'Dolor de cabeza, enrojecimiento, visión borrosa',
+    lowSymptoms:'Cansancio, palidez, mareos'},
+  leucocitos:{name:'Leucocitos (Glóbulos Blancos)',cat:'hematologia',unit:'x10³/μL',min:4.5,max:11,alarmLow:2,alarmHigh:30,
+    aliases:['leucocitos','leucocytes','wbc','white blood cells','globulos blancos','glóbulos blancos','recuento total de leucocitos','recuento de leucocitos','leucocitos totales','recuento leucocitos'],
+    what:'Los leucocitos son las células de defensa del cuerpo. Combaten infecciones, virus y otros agentes extraños.',
+    highMeaning:'Puede indicar infección, inflamación o, raramente, un trastorno de la médula ósea.',
+    lowMeaning:'Puede indicar vulnerabilidad a infecciones.',
+    highCauses:['Infección bacteriana o viral','Inflamación crónica','Corticoides','Estrés físico o emocional','Tabaquismo'],
+    lowCauses:['Medicamentos (quimioterapia)','Enfermedades autoinmunes','Infecciones virales severas'],
+    highSymptoms:'Fiebre, escalofríos, dolor, cansancio — según la causa subyacente',
+    lowSymptoms:'Mayor susceptibilidad a infecciones'},
+  plaquetas:{name:'Plaquetas',cat:'hematologia',unit:'x10³/μL',min:150,max:450,alarmLow:50,alarmHigh:1000,
+    aliases:['plaquetas','platelets','recuento de plaquetas','trombocitos'],
+    what:'Las plaquetas son pequeñas células que ayudan a detener el sangrado cuando hay una herida.',
+    highMeaning:'Demasiadas plaquetas pueden aumentar el riesgo de coágulos.',
+    lowMeaning:'Pocas plaquetas dificultan la coagulación y pueden causar sangrado fácil.',
+    highCauses:['Inflamación crónica','Deficiencia de hierro','Infecciones','Trastornos mieloproliferativos'],
+    lowCauses:['Medicamentos','Enfermedades autoinmunes','Infecciones virales','Enfermedades del hígado'],
+    highSymptoms:'Generalmente sin síntomas',
+    lowSymptoms:'Moretones fáciles, sangrado prolongado de heridas, petequias (puntitos rojos en piel)'},
+  tsh:{name:'TSH (Hormona Tiroidea)',cat:'tiroides',unit:'uUI/mL',min:0.27,max:4.2,alarmLow:0.1,alarmHigh:10,
+    aliases:['tsh','hormona estimulante','tirotropina','tiroides ultrasensible','hormona estimulante del tiroides','tsh ultrasensible'],
+    what:'La TSH es la orden que el cerebro (hipófisis) envía a la tiroides para que trabaje. Controla el metabolismo, la energía y muchas funciones del cuerpo.',
+    highMeaning:'Una TSH alta indica que la tiroides trabaja poco (hipotiroidismo). El cerebro exige más trabajo porque la tiroides no produce suficiente.',
+    lowMeaning:'Una TSH muy baja indica que la tiroides trabaja en exceso (hipertiroidismo). Puede aumentar el riesgo de arritmias cardíacas.',
+    highCauses:['Hipotiroidismo autoinmune (Hashimoto)','Deficiencia de yodo','Cirugía de tiroides','Tiroiditis','Algunos medicamentos'],
+    lowCauses:['Hipertiroidismo (Graves, nódulo tóxico)','Tiroiditis','Exceso de yodo','Medicamento tiroideo','Embarazo'],
+    highSymptoms:'Cansancio, aumento de peso, piel seca, frío constante, estreñimiento, depresión, cabello quebradizo',
+    lowSymptoms:'Palpitaciones, nerviosismo, pérdida de peso, calor excesivo, insomnio, temblor fino en manos'},
+  vitamina_d:{name:'Vitamina D (25-Hidroxi)',cat:'vitaminas',unit:'ng/mL',min:20,max:60,alarmLow:10,alarmHigh:100,
+    aliases:['vitamina d','vitamin d','25 hidroxi','25-hidroxi','25-oh','vitamina d- 25 hidroxi','25 hidroxivitamina'],
+    what:'La vitamina D es esencial para los huesos, el sistema inmune, el músculo y el estado de ánimo. Se produce principalmente con la exposición al sol.',
+    highMeaning:'Niveles muy altos (>60 ng/mL) pueden asociarse a toxicidad. Por encima de 100 ng/mL hay riesgo real de hipercalcemia.',
+    lowMeaning:'La deficiencia es muy común y se asocia a debilidad ósea, mayor riesgo de infecciones y fatiga.',
+    highCauses:['Suplementación excesiva','Alta exposición solar combinada con suplementos'],
+    lowCauses:['Poca exposición solar','Dieta pobre en vitamina D','Obesidad','Malabsorción','Envejecimiento'],
+    highSymptoms:'En toxicidad severa: náuseas, debilidad, confusión, cálculos renales',
+    lowSymptoms:'Cansancio crónico, dolores musculares/óseos, mayor frecuencia de infecciones, depresión'},
+  vitamina_b12:{name:'Vitamina B12',cat:'vitaminas',unit:'pg/mL',min:200,max:900,alarmLow:100,
+    aliases:['vitamina b12','b12','cobalamina','cyanocobalamin','cianocobalamina'],
+    what:'La vitamina B12 es esencial para el sistema nervioso, la formación de glóbulos rojos y el ADN.',
+    highMeaning:'Niveles muy altos pueden verse en enfermedades del hígado o ciertos tumores.',
+    lowMeaning:'La deficiencia puede causar anemia y daño nervioso.',
+    highCauses:['Suplementación excesiva','Enfermedad hepática','Algunos trastornos mieloproliferativos'],
+    lowCauses:['Dieta vegetariana o vegana','Malabsorción (gastritis atrófica)','Medicamento Metformina','Vejez'],
+    highSymptoms:'Generalmente asintomático a niveles moderadamente altos',
+    lowSymptoms:'Hormigueo en manos/pies, anemia, pérdida de memoria, fatiga, dificultad para caminar'},
+  ferritina:{name:'Ferritina',cat:'minerales',unit:'ng/mL',
+    minM:12,maxM:300,minF:10,maxF:150,min:12,max:300,alarmLow:5,alarmHigh:1000,
+    aliases:['ferritina','ferritin'],
+    what:'La ferritina es la proteína que almacena el hierro en el cuerpo. Es el mejor indicador de las reservas de hierro.',
+    highMeaning:'Puede indicar inflamación, infección, enfermedad hepática o sobrecarga de hierro.',
+    lowMeaning:'Indica reservas de hierro agotadas, lo que precede a la anemia por deficiencia de hierro.',
+    highCauses:['Inflamación crónica','Enfermedad hepática','Hemocromatosis','Infecciones','Cáncer (raramente)'],
+    lowCauses:['Dieta baja en hierro','Sangrado crónico (menstruación abundante, úlceras)','Embarazo','Malabsorción'],
+    highSymptoms:'Según la causa: dolores articulares (hemocromatosis), fatiga (inflamación)',
+    lowSymptoms:'Cansancio, uñas quebradizas, caída del cabello, piel pálida, dificultad para concentrarse'},
+  hierro:{name:'Hierro Sérico',cat:'minerales',unit:'μg/dL',min:60,max:170,alarmLow:30,
+    aliases:['hierro','iron','hierro serico','hierro sérico','sideremia'],
+    what:'Mide el hierro que circula en la sangre en este momento. Se interpreta junto con ferritina y transferrina.',
+    highMeaning:'Puede indicar sobrecarga de hierro o daño hepático.',
+    lowMeaning:'Puede indicar deficiencia de hierro, aunque la ferritina es un mejor indicador de reservas.',
+    highCauses:['Hemocromatosis','Transfusiones frecuentes','Daño hepático','Suplementación excesiva'],
+    lowCauses:['Dieta baja en hierro','Sangrado crónico','Anemia ferropénica'],
+    highSymptoms:'Fatiga, color bronce en piel, dolor articular (con niveles muy altos)',
+    lowSymptoms:'Cansancio, palidez, dificultad para concentrarse'},
+  pcr:{name:'Proteína C Reactiva (PCR)',cat:'inflamacion',unit:'mg/dL',min:0,max:1,alarmHigh:10,
+    aliases:['proteina c reactiva','pcr','crp','proteína c reactiva','c reactive protein'],
+    what:'La PCR sube cuando hay inflamación en el cuerpo — ya sea por infección, lesión, o inflamación crónica.',
+    highMeaning:'Indica que el cuerpo está respondiendo a algo: infección, inflamación o en algunos casos, mayor riesgo cardiovascular.',
+    lowMeaning:'Nivel normal, sin inflamación activa detectada.',
+    highCauses:['Infección bacteriana o viral','Enfermedades autoinmunes','Inflamación crónica','Tabaquismo','Obesidad'],
+    lowCauses:['No aplica'],
+    highSymptoms:'Fiebre, dolor, cansancio — según la causa de la inflamación',
+    lowSymptoms:'Sin síntomas'},
+  acido_urico:{name:'Ácido Úrico',cat:'otros',unit:'mg/dL',
+    minM:3.5,maxM:7.2,minF:2.6,maxF:6.0,min:3.5,max:7.2,alarmHigh:10,
+    aliases:['acido urico','ácido úrico','uric acid','uricemia'],
+    what:'El ácido úrico es un residuo del metabolismo de ciertas proteínas. Los riñones lo eliminan. En exceso puede formar cristales.',
+    highMeaning:'Puede causar gota (cristales dolorosos en articulaciones) y cálculos renales.',
+    lowMeaning:'Poco significativo clínicamente.',
+    highCauses:['Dieta rica en carnes rojas, vísceras y mariscos','Alcohol (especialmente cerveza)','Deshidratación','Medicamentos diuréticos','Obesidad'],
+    lowCauses:['Dieta baja en proteínas','Medicamentos','Enfermedades genéticas raras'],
+    highSymptoms:'Gota: dolor muy intenso en articulaciones (especialmente dedo gordo del pie), enrojecimiento, inflamación',
+    lowSymptoms:'Sin síntomas'},
+  urea:{name:'Urea (BUN)',cat:'rinon',unit:'mg/dL',min:10,max:50,alarmHigh:100,
+    aliases:['urea','bun','blood urea nitrogen','nitrógeno ureico'],
+    what:'La urea es un residuo del metabolismo de proteínas que los riñones eliminan.',
+    highMeaning:'Puede indicar reducción de función renal o deshidratación.',
+    lowMeaning:'Puede verse con dieta baja en proteínas.',
+    highCauses:['Deshidratación','Dieta alta en proteínas','Daño renal','Sangrado digestivo'],
+    lowCauses:['Dieta muy baja en proteínas','Enfermedad hepática severa'],
+    highSymptoms:'Con daño renal: fatiga, náuseas, hinchazón',
+    lowSymptoms:'Sin síntomas'},
+  vcm:{name:'VCM (Volumen Corpuscular Medio)',cat:'hematologia',unit:'fL',min:80,max:100,
+    aliases:['vcm','mcv','volumen corpuscular medio','volumen corpuscular promedio','vol corp medio','v.c.m','v.c.m.','vcm fl'],
+    what:'Mide el tamaño promedio de los glóbulos rojos. Ayuda a clasificar el tipo de anemia.',
+    highMeaning:'Glóbulos rojos grandes (macrocitosis): puede indicar deficiencia de B12, folato o problemas hepáticos.',
+    lowMeaning:'Glóbulos rojos pequeños (microcitosis): típico de anemia por deficiencia de hierro.',
+    highCauses:['Deficiencia de vitamina B12','Deficiencia de folato','Alcoholismo','Hipotiroidismo','Medicamentos'],
+    lowCauses:['Deficiencia de hierro','Talasemia','Anemia de enfermedades crónicas'],
+    highSymptoms:'Puede acompañar síntomas de anemia: fatiga, palidez, falta de aliento',
+    lowSymptoms:'Cansancio, palidez, uñas frágiles'},
+  hcm:{name:'HCM (Hemoglobina Corpuscular Media)',cat:'hematologia',unit:'pg',min:28,max:33,
+    aliases:['hcm','mch','hemoglobina corpuscular media','contenido de hemoglobina corpuscular','hemoglobina corp media','h.c.m','h.c.m.'],
+    what:'Mide la cantidad promedio de hemoglobina en cada glóbulo rojo.',
+    highMeaning:'Glóbulos rojos con exceso de hemoglobina — puede verse en macrocitosis.',
+    lowMeaning:'Glóbulos rojos con poca hemoglobina — típico de deficiencia de hierro.',
+    highCauses:['Deficiencia de B12','Deficiencia de folato','Macrocitosis de diversas causas'],
+    lowCauses:['Deficiencia de hierro','Talasemia','Inflamación crónica'],
+    highSymptoms:'Generalmente asintomático aislado — interpretar en conjunto con VCM y hemoglobina',
+    lowSymptoms:'Cansancio, palidez'},
+  chcm:{name:'CHCM (Concentración de Hemoglobina)',cat:'hematologia',unit:'g/dL',min:33,max:36,
+    aliases:['chcm','mchc','concentracion hemoglobina corpuscular media','concentracion media de hemoglobina corpuscular','conc media hemoglobina corpuscular','concentracion media hgb corpuscular','c.h.c.m','c.h.c.m.','concentracion de hemoglobina corpuscular media'],
+    what:'Mide la concentración de hemoglobina dentro de los glóbulos rojos.',
+    highMeaning:'Hipercromía — los glóbulos rojos están muy concentrados, puede verse en esferocitosis.',
+    lowMeaning:'Hipocromía — glóbulos rojos pálidos con poca hemoglobina, indica deficiencia de hierro.',
+    highCauses:['Esferocitosis hereditaria','Deshidratación severa'],
+    lowCauses:['Deficiencia de hierro','Talasemia'],
+    highSymptoms:'Según causa subyacente',
+    lowSymptoms:'Cansancio, palidez'},
+  rdw:{name:'RDW (Amplitud de Distribución Eritrocitaria)',cat:'hematologia',unit:'%',min:11.5,max:14.5,
+    aliases:['rdw','amplitud de distribucion eritrocitaria','amplitud de la distribucion eritrocitaria','ancho de distribucion eritrocitaria','ancho de la distribucion eritrocitaria','distribucion eritrocitos','rdw-cv','r.d.w','rdw cv'],
+    what:'Mide qué tan variable es el tamaño de los glóbulos rojos. Un valor alto indica que hay glóbulos rojos de tamaños muy diferentes.',
+    highMeaning:'Alta variabilidad en el tamaño de glóbulos rojos — puede indicar deficiencias nutricionales mixtas o anemia en desarrollo.',
+    lowMeaning:'Tamaños muy uniformes — generalmente normal.',
+    highCauses:['Deficiencia de hierro','Deficiencia de B12 o folato','Anemia mixta','Transfusión reciente'],
+    lowCauses:['No aplica clínicamente'],
+    highSymptoms:'Fatiga, palidez — dependiendo de la causa de anemia subyacente',
+    lowSymptoms:'Sin síntomas'},
+  neutrofilos:{name:'Neutrófilos (%)',cat:'hematologia',unit:'%',min:50,max:75,
+    aliases:['neutrofilos','neutrophils','% neutrofilos','neutrófilos','neutr%','neu%','segmentados','neutrofilos segmentados','%neutrófilos'],
+    what:'Los neutrófilos son el tipo más abundante de glóbulos blancos y son la primera línea de defensa contra bacterias.',
+    highMeaning:'Puede indicar infección bacteriana activa, inflamación o estrés físico.',
+    lowMeaning:'Neutropenia: mayor riesgo de infecciones bacterianas graves.',
+    highCauses:['Infección bacteriana','Inflamación aguda','Corticoides','Estrés','Tabaquismo','Ejercicio intenso'],
+    lowCauses:['Medicamentos (quimioterapia)','Infecciones virales severas','Enfermedades autoinmunes','Déficit de B12 o folato'],
+    highSymptoms:'Fiebre, dolor, escalofríos — según la infección subyacente',
+    lowSymptoms:'Mayor susceptibilidad a infecciones, fiebre'},
+  linfocitos:{name:'Linfocitos (%)',cat:'hematologia',unit:'%',min:20,max:40,
+    aliases:['linfocitos','lymphocytes','% linfocitos','linf%','lin%','%linfocitos'],
+    what:'Los linfocitos son glóbulos blancos clave en la respuesta inmune adaptativa — combaten virus y producen anticuerpos.',
+    highMeaning:'Linfocitosis: puede indicar infección viral, mononucleosis o respuesta inmune activa.',
+    lowMeaning:'Linfopenia: puede verse en infecciones severas, uso de corticoides o inmunosupresión.',
+    highCauses:['Infección viral (EBV, CMV, VIH)','Leucemia linfocítica','Tos ferina','Estrés crónico'],
+    lowCauses:['Corticoides','VIH avanzado','Quimioterapia','Enfermedades autoinmunes','COVID-19 severo'],
+    highSymptoms:'Según infección: fiebre, ganglios inflamados, cansancio',
+    lowSymptoms:'Mayor vulnerabilidad a infecciones virales'},
+  eosinofilos:{name:'Eosinófilos (%)',cat:'hematologia',unit:'%',min:2,max:4,
+    aliases:['eosinofilos','eosinophils','% eosinofilos','eosinófilos','eosi%','eos%','%eosinófilos'],
+    what:'Los eosinófilos combaten parásitos y están involucrados en reacciones alérgicas.',
+    highMeaning:'Puede indicar alergias, parasitosis intestinal o enfermedades inflamatorias.',
+    lowMeaning:'Eosinopenia: puede verse con corticoides o en infección bacteriana aguda — raramente significativa.',
+    highCauses:['Alergias (rinitis, asma, eczema)','Parasitosis intestinal','Enfermedades autoinmunes','Medicamentos'],
+    lowCauses:['Tratamiento con corticoides','Infección bacteriana aguda','Estrés'],
+    highSymptoms:'Síntomas alérgicos: picazón, estornudos, urticaria; o síntomas digestivos si es por parásitos',
+    lowSymptoms:'Generalmente sin síntomas'},
+  monocitos:{name:'Monocitos (%)',cat:'hematologia',unit:'%',min:4,max:8,
+    aliases:['monocitos','monocytes','% monocitos','mono%','mon%','%monocitos'],
+    what:'Los monocitos son glóbulos blancos que se transforman en macrófagos para devorar patógenos y células dañadas.',
+    highMeaning:'Puede indicar infección crónica, inflamación persistente o enfermedades autoinmunes.',
+    lowMeaning:'Raramente significativo aislado.',
+    highCauses:['Infección crónica (tuberculosis, endocarditis)','Inflamación crónica','Enfermedades autoinmunes','Recuperación post-infección'],
+    lowCauses:['Medicamentos','Leucemia de células pilosas'],
+    highSymptoms:'Según causa: fiebre prolongada, pérdida de peso, sudoración nocturna',
+    lowSymptoms:'Sin síntomas'},
+  basofilos:{name:'Basófilos (%)',cat:'hematologia',unit:'%',min:0,max:1,
+    aliases:['basofilos','basophils','% basofilos','basófilos','baso%','bas%','%basófilos'],
+    what:'Los basófilos son el tipo menos frecuente de glóbulos blancos, involucrados en reacciones alérgicas e inflamatorias.',
+    highMeaning:'Basofilia: puede verse en reacciones alérgicas, inflamación crónica o trastornos mieloproliferativos.',
+    lowMeaning:'Valores bajos o indetectables son normales.',
+    highCauses:['Alergias','Hipotiroidismo','Leucemia mieloide crónica (si muy elevado)','Inflamación crónica'],
+    lowCauses:['Normal en la mayoría de casos'],
+    highSymptoms:'Síntomas alérgicos o de la causa subyacente',
+    lowSymptoms:'Sin síntomas'},
+};
+
+// Defines the logical display order of markers (grouped by clinical relationship).
+// Lower number = shown first. Unlisted markers fall to the end (order 9999).
+const DISPLAY_ORDER = {
+  // ── Lípidos ────────────────────────────────
+  colesterol_total: 10, ldl: 11, hdl: 12, trigliceridos: 13,
+  // ── Glucosa / Metabólico ────────────────────
+  glucosa: 20, hba1c: 21,
+  // ── Hígado ─────────────────────────────────
+  alt: 30, ast: 31,
+  // ── Riñón ──────────────────────────────────
+  creatinina: 40, urea: 41,
+  // ── Hematología: masa eritrocitaria ─────────
+  globulos_rojos: 50, hematocrito: 51, hemoglobina: 52,
+  vcm: 53, hcm: 54, chcm: 55, rdw: 56,
+  // ── Hematología: leucocitos y diferencial ───
+  leucocitos: 57,
+  neutrofilos: 58, linfocitos: 59, monocitos: 60, eosinofilos: 61, basofilos: 62,
+  // ── Plaquetas ──────────────────────────────
+  plaquetas: 63,
+  // ── Tiroides ───────────────────────────────
+  tsh: 70,
+  // ── Vitaminas ──────────────────────────────
+  vitamina_d: 80, vitamina_b12: 81,
+  // ── Minerales ──────────────────────────────
+  hierro: 85, ferritina: 86,
+  // ── Inflamación / otros ─────────────────────
+  pcr: 90, acido_urico: 91,
+};
+
+const CAT_INFO = {
+  glucosa:{label:'Glucosa',icon:'🍬'},
+  lipidos:{label:'Lípidos',icon:'🫀'},
+  higado:{label:'Hígado',icon:'🤎'},
+  rinon:{label:'Riñón',icon:'🫘'},
+  hematologia:{label:'Hematología',icon:'🩸'},
+  tiroides:{label:'Tiroides',icon:'🦋'},
+  vitaminas:{label:'Vitaminas',icon:'☀️'},
+  minerales:{label:'Minerales',icon:'⚡'},
+  inflamacion:{label:'Inflamación',icon:'🔥'},
+  otros:{label:'Otros',icon:'🔬'},
+};
+
+// ═══════════════════════════════════════════
+// 2. STATE
+// ═══════════════════════════════════════════
+let state = { tab:'file', pdfText:'', fileLoaded:false, chartInstances:{} };
+let patientCtx = {};   // populated by runAnalysis, used by renderFindings & generatePlan
+
+// ═══════════════════════════════════════════
+// 2b. PATIENT CONTEXT ENGINE
+// ═══════════════════════════════════════════
+function parsePatientContext(conditions, meds) {
+  const c = (conditions || '').toLowerCase();
+  const m = (meds      || '').toLowerCase();
+  const all = c + ' ' + m;
+  return {
+    // Cardiovascular
+    cardiac:      /infarto|iam|im\b|angina|coronar|stent|bypass|isquemia|evento cardio|sindrome coronario/.test(all),
+    // Lipid meds
+    statins:      /estatina|rosuvastat|atorvastat|simvastat|lovastat|pravastat|pitavastat|fluvastat/.test(all),
+    pcsk9:        /alirocumab|evolocumab|inclisiran/.test(m),
+    ezetimibe:    /ezetimib/.test(m),
+    // Diabetes & metabolic
+    diabetes:     /diabet[ií]c|diabetes tipo|dm1|dm2|dm\s*1|dm\s*2/.test(all),
+    prediabetes:  /prediabet/.test(all),
+    insulin:      /insulina|glargina|lispro|aspart|degludec|nph/.test(m),
+    metformin:    /metformin/.test(m),
+    glp1:         /semaglutida|ozempic|liraglutida|victoza|tirzepatida|mounjaro|dulaglutida/.test(m),
+    sglt2:        /dapagliflozina|empagliflozina|canagliflozina|forxiga|jardiance/.test(m),
+    // Hypertension
+    hypertension: /hipertens|hta\b|tension alta|presion alta|presión alta/.test(all),
+    acei:         /enalapril|lisinopril|ramipril|captopril|perindopril|quinapril|benazepril/.test(m),
+    arb:          /losartan|valsartan|irbesartan|telmisartan|olmesartan|candesartan|azilsartan/.test(m),
+    betablocker:  /metoprolol|carvedilol|bisoprolol|atenolol|nebivolol|propranolol/.test(m),
+    // Kidney
+    ckd:          /renal cron|nefropatia|nefropatía|ckd|enfermedad renal|insuficiencia renal|trasplante renal/.test(all),
+    // Thyroid
+    hypothyroid:  /hipotiroid|hashimoto/.test(all),
+    hyperthyroid: /hipertiroid|graves/.test(all),
+    thyroid_meds: /levotiroxina|eutirox|synthroid|liothyronine|tiroide/.test(m),
+    thyroid_cancer:/cancer.*tiroid|tiroid.*cancer|carcinoma.*tiroid/.test(all),
+    // Liver
+    liver:        /higado|hígado|hepatitis|esteatosis|cirrosis|nash|nafld|hgna/.test(all),
+    // Bone
+    osteoporosis: /osteoporosis|osteopenia/.test(all),
+    // Gout
+    gout:         /gota\b|hiperuricemia/.test(all),
+    // Anemia
+    anemia:       /anemia/.test(all),
+    // Blood / coagulation
+    anticoag:     /warfarina|acenocumarol|rivaroxaban|apixaban|dabigatran|edoxaban/.test(m),
+    asa:          /asa\b|aspirina|acido acetilsalicilico|acido acetilsalicílico/.test(m),
+    // Inflammation / immune
+    cortico:      /prednisona|cortisona|dexametasona|betametasona|budesonida|metilprednisolona|deflazacort/.test(m),
+    autoimmune:   /lupus|artritis reumatoide|espondilitis|enfermedad inflamatoria|sjögren|sjogren|esclerosis multiple/.test(all),
+    // Diuretics
+    diuretics:    /furosemida|torasemida|hidroclorotiazida|tiazida|espironolactona|eplerenona|indapamida/.test(m),
+    // Pain / NSAIDs
+    nsaids:       /ibuprofeno|naproxeno|diclofenaco|indometacina|celecoxib|meloxicam|ketorolaco/.test(m),
+    // Diet
+    vegetarian:   /vegetariano|vegano|vegetariana|vegana|plant.based/.test(all),
+    // Obesity
+    obesity:      /obesidad|obeso/.test(all),
+    // COPD / Respiratory
+    copd:         /epoc|enfermedad pulmonar obstructiva|asma crónico/.test(all),
+    // Sleep
+    sleep_apnea:  /apnea del sueño|apnea|sahos/.test(all),
+    // Prostate
+    prostate:     /prostata|próstata|hiperplasia benigna|hbp/.test(all),
+  };
+}
+
+// Returns array of clinical context strings for a given marker + patient context
+function getContextNotes(key, isHigh, ctx) {
+  const notes = [];
+  const hi = isHigh;
+  if (key==='ldl') {
+    if (ctx.cardiac || ctx.pcsk9) notes.push('⚡ Para tu riesgo cardiovascular alto, el objetivo de LDL es <strong><55 mg/dL</strong> (guías ACC/AHA 2022), no el límite general de 130 mg/dL. Tu valor está siendo evaluado con este objetivo personalizado.');
+    if (ctx.statins) notes.push('💊 Las estatinas deben reducir el LDL al menos un 50% del basal. Si el resultado no refleja esa reducción, consulta ajuste de dosis o terapia combinada con ezetimibe.');
+    if (ctx.pcsk9) notes.push('💉 Con Alirocumab/Evolocumab, la meta debe ser <55 mg/dL. Un LDL por encima de ese valor sugiere necesidad de revisión del esquema terapéutico con tu cardiólogo.');
+  }
+  if (key==='hba1c') {
+    if (ctx.diabetes)    notes.push('🩺 Para personas con diabetes tipo 2, el objetivo de HbA1c es <strong><7.0%</strong> (individualizable). Si estás en <6.5% sin hipoglucemias, es un control excelente.');
+    if (ctx.prediabetes) notes.push('⚠️ Con prediabetes conocida, una HbA1c entre 5.7-6.4% confirma el diagnóstico. El objetivo con cambios de estilo de vida es volver a <5.7%.');
+    if (ctx.metformin)   notes.push('💊 La Metformina es el tratamiento de primera línea para prediabetes. Si la tomas, evalúa la respuesta midiendo la HbA1c cada 3-6 meses.');
+    if (ctx.insulin)     notes.push('💉 Con insulina, el objetivo de HbA1c debe individualizarse (puede ser <8% en adultos mayores o con hipoglucemias frecuentes). Consulta con tu médico.');
+  }
+  if (key==='glucosa') {
+    if (ctx.diabetes)    notes.push('🩺 Para personas con diabetes, la glucosa en ayunas objetivo es <strong>80-130 mg/dL</strong>. Valores altos requieren ajuste del tratamiento.');
+    if (ctx.cortico && hi) notes.push('💊 Los corticosteroides elevan la glucosa, especialmente en horas de la tarde. Si estás tomando corticoides, este resultado debe interpretarse en ese contexto.');
+    if (ctx.sglt2)       notes.push('💊 Los inhibidores SGLT2 reducen la glucosa y protegen el corazón y riñones. Monitorea infecciones urinarias y cetoacidosis (rara pero posible).');
+    if (ctx.glp1)        notes.push('💊 Los agonistas GLP-1 (semaglutida, etc.) mejoran el control glucémico y favorecen la pérdida de peso. Monitorea respuesta con HbA1c cada 3 meses.');
+  }
+  if (key==='creatinina') {
+    if (ctx.acei || ctx.arb) notes.push('💊 Los IECA (enalapril, ramipril) y ARA-II (losartán) pueden elevar la creatinina hasta un 20-30% — este efecto es <strong>esperado y protector del riñón</strong>, no un daño. Si es tu caso, informa a tu médico para confirmar.');
+    if (ctx.ckd)         notes.push('🫘 Con enfermedad renal crónica conocida, cualquier aumento de creatinina por encima de tu valor basal es significativo y debe evaluarse con la TFG (tasa de filtración glomerular).');
+    if (ctx.nsaids)      notes.push('⚠️ Los antiinflamatorios (ibuprofeno, naproxeno, etc.) pueden reducir el flujo sanguíneo renal y elevar la creatinina. Si los usas con frecuencia, puede ser la causa.');
+    if (ctx.diabetes)    notes.push('🩺 La nefropatía diabética es la causa más común de enfermedad renal crónica. Monitorear creatinina + microalbuminuria cada año es esencial con diabetes.');
+  }
+  if (key==='urea' && ctx.ckd) {
+    notes.push('🫘 Con enfermedad renal crónica, la urea elevada (azotemia) es un marcador de función renal reducida. Monitorear junto con creatinina y TFG.');
+  }
+  if (key==='tsh') {
+    if (ctx.thyroid_meds) notes.push('💊 Si tomas levotiroxina, el objetivo de TSH depende de tu condición: hipotiroidismo simple → 0.5-2.5 uUI/mL; post-tiroidectomía → 0.1-2.0; cáncer de tiroides en supresión → puede ser intencionalmente <0.1. Consulta con tu endocrinólogo el objetivo de tu caso específico.');
+    if (ctx.hyperthyroid) notes.push('⚠️ Con antecedente de hipertiroidismo (Graves, nódulo tóxico), una TSH suprimida puede indicar recurrencia de la enfermedad. Requiere evaluación urgente.');
+    if (ctx.cardiac)      notes.push('❤️ En tu contexto cardiovascular, la TSH suprimida (hipertiroidismo) aumenta significativamente el riesgo de fibrilación auricular y eventos cardíacos. La evaluación es especialmente urgente en tu caso.');
+    if (ctx.hypothyroid && !hi) notes.push('Con hipotiroidismo en tratamiento, una TSH elevada indica que la dosis de levotiroxina puede ser insuficiente. Consulta ajuste con tu médico.');
+  }
+  if ((key==='hemoglobina'||key==='hematocrito'||key==='globulos_rojos') && hi) {
+    if (ctx.cardiac)     notes.push('❤️ En tu contexto cardiovascular, la sangre más espesa (policitemia) aumenta el riesgo de trombosis, ACV y nuevo infarto. El ASA protege sobre plaquetas pero no sobre la viscosidad por exceso de glóbulos rojos. Este hallazgo tiene mayor urgencia en tu caso.');
+    if (ctx.sleep_apnea) notes.push('😴 Con apnea del sueño conocida, los niveles bajos de oxígeno nocturnos estimulan la producción de glóbulos rojos. El tratamiento con CPAP puede normalizar estos valores.');
+    if (ctx.copd)        notes.push('🫁 En pacientes con EPOC o enfermedad respiratoria crónica, la policitemia es una respuesta compensatoria a la hipoxia crónica. Requiere evaluación con tu neumólogo.');
+  }
+  if (key==='vitamina_b12') {
+    if (ctx.metformin)   notes.push('💊 <strong>La Metformina reduce la absorción de vitamina B12</strong> en hasta un 30% de los pacientes con uso prolongado. El monitoreo anual de B12 es recomendado en todos los usuarios de Metformina. Consulta suplementación profiláctica con tu médico.');
+    if (ctx.vegetarian)  notes.push('🌱 En dietas vegetarianas o veganas, la B12 no está disponible en fuentes vegetales — la suplementación es esencial e indefinida. La deficiencia puede desarrollarse silenciosamente en años.');
+  }
+  if (key==='vitamina_d' && ctx.osteoporosis) {
+    notes.push('🦴 Con osteoporosis u osteopenia, mantener la vitamina D en niveles óptimos (40-60 ng/mL) es crítico para la absorción de calcio y la salud ósea. Junto con calcio y ejercicio de impacto son los pilares del tratamiento.');
+  }
+  if (key==='alt' || key==='ast') {
+    if (ctx.statins && hi) notes.push('💊 Las estatinas pueden elevar las transaminasas leve y transitoriamente (efecto esperado). Una elevación menor de 3 veces el límite superior generalmente no requiere discontinuar el tratamiento. Si es mayor, consulta a tu médico antes de suspender.');
+    if (ctx.liver)         notes.push('Considerando tu antecedente de enfermedad hepática, cualquier elevación de transaminasas tiene mayor significado clínico y requiere seguimiento más estrecho.');
+  }
+  if (key==='leucocitos' && ctx.cortico) {
+    notes.push('💊 Los corticosteroides elevan los leucocitos (leucocitosis neutrofílica) como efecto esperado — no necesariamente por infección. Esto debe considerarse al interpretar el resultado.');
+  }
+  if (key==='acido_urico') {
+    if (ctx.diuretics && hi) notes.push('💊 Los diuréticos (furosemida, tiazidas) elevan el ácido úrico — es un efecto secundario conocido. Si ya tienes gota o el ácido úrico estaba previamente alto, informa a tu médico sobre este efecto.');
+    if (ctx.asa && hi)       notes.push('💊 El ASA a dosis bajas (100mg) puede reducir levemente la excreción de ácido úrico. Aunque el efecto es pequeño, es relevante si tienes gota conocida.');
+  }
+  if (key==='ferritina') {
+    if (ctx.autoimmune && hi) notes.push('Con enfermedades autoinmunes, la ferritina puede estar elevada por inflamación activa (ferritina es reactante de fase aguda), no necesariamente por sobrecarga de hierro. Interpretar junto con PCR.');
+    if (ctx.liver && hi)      notes.push('La enfermedad hepática puede elevar la ferritina al dañar los hepatocitos que la almacenan — no siempre indica sobrecarga de hierro real.');
+  }
+  if (key==='plaquetas') {
+    if (ctx.anticoag)    notes.push('💊 Con anticoagulantes (rivaroxabán, apixabán, warfarina), el recuento de plaquetas es especialmente importante. Plaquetas bajas junto con anticoagulación aumenta el riesgo de sangrado.');
+    if (ctx.asa)         notes.push('💊 Con ASA, las plaquetas funcionan de manera diferente (inhibición de agregación) aunque su número puede ser normal. El recuento no refleja completamente la función plaquetaria con ASA.');
+  }
+  if (key==='hdl') {
+    if (ctx.diabetes) notes.push('🩺 En personas con diabetes, el HDL bajo es especialmente importante porque combinado con triglicéridos altos forma parte del síndrome metabólico. El objetivo es HDL >40 para hombres y >50 para mujeres.');
+    if (ctx.hypertension) notes.push('❤️ El HDL bajo junto con hipertensión multiplica el riesgo cardiovascular. El ejercicio aeróbico regular es el mejor elevador del HDL.');
+  }
+  if (key==='pcr' && ctx.autoimmune) {
+    notes.push('Con enfermedad autoinmune conocida, la PCR elevada puede reflejar actividad inflamatoria de tu enfermedad de base, no necesariamente una infección. Correlaciona con síntomas actuales y consulta con tu reumatólogo.');
+  }
+  return notes;
+}
+
+// ═══════════════════════════════════════════
+// 3. PARSER
+// ═══════════════════════════════════════════
+function normalize(s){
+  return s.toLowerCase()
+    .replace(/[áàâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[íìîï]/g,'i')
+    .replace(/[óòôö]/g,'o').replace(/[úùûü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[^a-z0-9\s\-\/\.]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// Word-boundary-aware matching with best-length selection.
+// Requires alias to appear as a whole word (not as substring of another word).
+function matchMarker(rawName) {
+  // Strip trailing punctuation: some labs end exam names with "." (e.g. Colsanitas "VOLUMEN CORPUSCULAR MEDIO.")
+  const n = normalize(rawName).replace(/[\s\.]+$/, '');
+  let best = null, bestLen = 0;
+  for (const [key, m] of Object.entries(MARKERS)) {
+    for (const a of m.aliases) {
+      const na = normalize(a);
+      if (na.length < 2) continue;
+      // Word-boundary check: space OR dash as separator (handles "RDW-ANCHO..." matching alias "rdw")
+      const isWord = (
+        n === na ||
+        n.startsWith(na + ' ') || n.startsWith(na + '-') ||
+        n.endsWith(' ' + na)   || n.endsWith('-' + na)   ||
+        n.includes(' ' + na + ' ') || n.includes(' ' + na + '-') ||
+        n.includes('-' + na + ' ') || n.includes('-' + na + '-')
+      );
+      if (isWord && na.length > bestLen) {
+        best = { key, marker: m };
+        bestLen = na.length;
+      }
+    }
+  }
+  return best;
+}
+
+function parseNumber(s){ return s ? parseFloat(s.replace(',','.')) : null; }
+
+// Normalize unit string for comparison
+function normalizeUnit(u) {
+  return (u||'').toLowerCase()
+    .replace(/[μµ]/g,'u').replace(/[°º]/g,'').replace(/\s/g,'').replace(/[^a-z0-9\/\.\%]/g,'');
+}
+
+// Reject clearly incompatible unit combinations (e.g. U/L vs mg/dL)
+function unitsCompatible(parsedUnit, markerUnit) {
+  if (!parsedUnit || parsedUnit.length < 2) return true;
+  const pu = normalizeUnit(parsedUnit);
+  const mu = normalizeUnit(markerUnit);
+  if (!pu || !mu || pu === mu) return true;
+  const isEnzyme = u => /^(u|iu)\/l$/.test(u);
+  const isConcMg = u => /^mg\/dl?$/.test(u);
+  const isGdL = u => /^g\/dl?$/.test(u);
+  const isPct = u => u === '%';
+  const isCount = u => /x10/.test(u) || u.includes('/ul') || u.includes('/l');
+  const isHormone = u => /uui|mui|uu\/|mu\//.test(u);
+  // Enzyme (U/L) vs concentration (mg/dL or g/dL) are incompatible
+  if (isEnzyme(pu) && (isConcMg(mu) || isGdL(mu))) return false;
+  if ((isConcMg(pu) || isGdL(pu)) && isEnzyme(mu)) return false;
+  // Percentage vs concentration/count are incompatible
+  if (isPct(pu) && (isConcMg(mu) || isEnzyme(mu) || isGdL(mu) || isCount(mu))) return false;
+  if ((isConcMg(mu) || isEnzyme(mu) || isGdL(mu)) && isPct(pu)) return false;
+  // Cell count (x10³/µL) vs percentage are incompatible:
+  // prevents absolute differential counts from overwriting % markers in `seen`
+  if (isCount(pu) && isPct(mu)) return false;
+  if (isPct(pu) && isCount(mu)) return false;
+  return true;
+}
+
+function tryParseLine(clean, seen) {
+  const patterns = [
+    // Name value unit min–max  (e.g. "VCM 85.30 fL 80.00 - 100.00")
+    /^(.+?)\s+([\d,\.]+)\s*([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×]+)?\s+([\d\.]+)\s*[-–]\s*([\d\.]+)\s*$/,
+    // Name value unit min  max  (two+ spaces separator, no dash)
+    /^(.+?)\s+([\d,\.]+)\s*([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×]+)?\s+([\d\.]+)\s{2,}([\d\.]+)\s*$/,
+    // Name value unit (min–max)
+    /^(.+?)\s+([\d,\.]+)\s*([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×]+)?\s*\(\s*([\d\.]+)\s*[-–]\s*([\d\.]+)\s*\)/,
+    // Name value unit <max or >min
+    /^(.+?)\s+([\d,\.]+)\s*([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×]+)?\s+[<>≤≥]\s*([\d\.]+)\s*$/,
+    // Name: value unit (min-max)
+    /^(.+?):\s*([\d,\.]+)\s*([a-zA-Z0-9\/\%\^\³µμ]+)?\s*(?:[\(\[])?\s*([\d\.]+)?\s*[-–]?\s*([\d\.]+)?/,
+    // Name value unit  (no range, unit ends in letter or %)
+    /^(.+?)\s+([\d,\.]+)\s+([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×]+[a-zA-Z0-9\%])\s*$/,
+    // Name value  (minimal, no unit)
+    /^(.+?)\s+([\d,\.]+)\s*$/,
+  ];
+
+  for (const pat of patterns) {
+    const m = clean.match(pat);
+    if (!m) continue;
+    const rawName = m[1].trim();
+    if (rawName.length < 2 || rawName.length > 80) continue;
+    // If the extracted name contains a decimal number, we grabbed a previous value/range
+    // into the name (e.g. pattern 7 captures "NEUTROFILOS 3.49 x10^3/ul 2.25" as name,
+    // using rmax 8.48 as value — consuming the % key before the real % line arrives).
+    if (/\d+[.,]\d+/.test(rawName)) continue;
+    const value = parseNumber(m[2]);
+    if (isNaN(value) || value < 0 || value > 999999) continue;
+    const unit = (m[3]||'').trim();
+    const rmin = parseNumber(m[4]);
+    const rmax = parseNumber(m[5]);
+
+    const found = matchMarker(rawName);
+    if (!found) continue;
+    if (seen.has(found.key)) continue;
+    if (!unitsCompatible(unit, found.marker.unit)) continue;
+    seen.add(found.key);
+    return { key: found.key, marker: found.marker, rawName, value, unit: unit||found.marker.unit, rmin, rmax };
+  }
+  return null;
+}
+
+// Smart fallback: scans ALL decimal numbers in a line as value candidates.
+// Works for any lab entity format (no strict column/separator requirements).
+// Example: "Vitamina D (25-OH) 18.5 ng/mL 30 - 100" — tries 18.5 as value, finds marker
+// before it, extracts unit, then picks next two numbers as rmin/rmax.
+function tryParseLineSmart(line, seen) {
+  // Normalize x10 spacing, strip noise
+  const s = line
+    .replace(/\*/g,'').replace(/\|/g,' ').replace(/\.{3,}/g,' ')
+    .replace(/([x×])\s+10/gi, 'x10')
+    .trim();
+
+  // Find all decimal-number positions in string (skip pure integers that are parts of dates)
+  // Capture: index, matched string
+  const numRe = /\b(\d+[\.,]\d+|\d+)\b/g;
+  const matches = [];
+  let nm;
+  while ((nm = numRe.exec(s)) !== null) {
+    matches.push({ idx: nm.index, raw: nm[0], end: nm.index + nm[0].length });
+  }
+
+  // Try each number as the value, starting from the last one that still leaves
+  // a plausible marker name before it (prefers rightmost value so "25-OH D 18.5" works).
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    const value = parseNumber(m.raw);
+    if (isNaN(value) || value < 0 || value > 999999) continue;
+
+    // Marker name = everything before this number, trimmed
+    const namePart = s.substring(0, m.idx).replace(/[:\-–,]+$/, '').replace(/\s+/g,' ').trim();
+    if (namePart.length < 2 || namePart.length > 80) continue;
+    // Reject if namePart contains a decimal number — means we grabbed a previous value into the name
+    // (e.g. "RECUENTO GLOBULOS ROJOS 6.26 x10" would falsely match alias "recuento globulos rojos")
+    // Integer-only numbers in names are OK (B12, D3, IL-6, etc.)
+    if (/\d+[.,]\d+/.test(namePart)) continue;
+
+    const found = matchMarker(namePart);
+    if (!found) continue;
+    if (seen.has(found.key)) continue;
+
+    // Extract unit: first token right after the value number (letters/symbols only)
+    const afterValue = s.substring(m.end).trimStart();
+    const unitMatch = afterValue.match(/^([a-zA-Z0-9\/\%\^\³µμ·\*\[\]×\.]+)/);
+    const unit = unitMatch ? unitMatch[1].trim() : '';
+
+    if (!unitsCompatible(unit || found.marker.unit, found.marker.unit)) continue;
+
+    // Extract rmin / rmax from the next two numbers after value (and optional unit)
+    const afterUnit = unitMatch ? afterValue.substring(unitMatch[0].length) : afterValue;
+    const rangeNums = [];
+    const rNumRe = /\b(\d+[\.,]\d+|\d+)\b/g;
+    let rn;
+    while ((rn = rNumRe.exec(afterUnit)) !== null && rangeNums.length < 2) {
+      rangeNums.push(parseNumber(rn[0]));
+    }
+    const rmin = rangeNums[0] ?? NaN;
+    const rmax = rangeNums[1] ?? NaN;
+
+    seen.add(found.key);
+    return { key: found.key, marker: found.marker, rawName: namePart, value, unit: unit || found.marker.unit, rmin, rmax };
+  }
+  return null;
+}
+
+function parseLabText(raw) {
+  const lines = raw.split('\n').filter(l => l.trim().length > 2);
+  const results = [];
+  const seen = new Set();
+
+  console.group('%c🔬 LabInsight — PDF Parse Debug', 'color:#6366f1;font-weight:bold');
+  console.log(`Total lines extraídas: ${lines.length}`);
+
+  for (const line of lines) {
+    // raw2 = noise stripped but original spacing preserved (needed for pattern 2: \s{2,})
+    // clean = same but spaces collapsed to 1 (needed for pattern 1 and 6)
+    // Normalize "x 10^N" → "x10^N": Colsanitas writes "x 10^6/uL" with a space inside the unit.
+    // Without this, "10" is captured as the value and "^6/uL" as the unit instead of "6.26".
+    const raw2 = line
+      .replace(/\*/g,'').replace(/\|/g,' ').replace(/\.{3,}/g,' ')
+      .replace(/([x×])\s+10/gi, 'x10')   // "x 10^6/uL" → "x10^6/uL" (Colsanitas space in unit)
+      .trim();
+    const clean = raw2.replace(/\s+/g,' ');
+
+    // Try original spacing FIRST so pattern 2 (min  max without dash) works before
+    // pattern 6 has a chance to misread the reference range as value/unit.
+    // Then try collapsed as fallback for single-space formats.
+    const direct = tryParseLine(raw2, seen) || tryParseLine(clean, seen);
+    if (direct) {
+      console.log(`%c✅ ${direct.key}`, 'color:green', `| valor=${direct.value} ${direct.unit} | línea="${clean.substring(0,80)}"`);
+      results.push(direct); continue;
+    }
+
+    // Segment fallback: split on 3+ spaces in original (multi-result rows)
+    const segments = raw2.split(/\s{3,}/);
+    if (segments.length > 1) {
+      let segHit = false;
+      for (const seg of segments) {
+        const segClean = seg.replace(/\s+/g,' ').trim();
+        const r = tryParseLine(seg.trim(), seen) || tryParseLine(segClean, seen)
+               || tryParseLineSmart(seg.trim(), seen);
+        if (r) {
+          console.log(`%c✅ ${r.key} (seg)`, 'color:teal', `| valor=${r.value} ${r.unit} | seg="${segClean.substring(0,60)}"`);
+          results.push(r);
+          segHit = true;
+        }
+      }
+      if (segHit) continue;
+    }
+
+    // Smart fallback: handles any lab format, any separator, any entity
+    const smart = tryParseLineSmart(raw2, seen);
+    if (smart) {
+      console.log(`%c✅ ${smart.key} (smart)`, 'color:darkorange', `| valor=${smart.value} ${smart.unit} | línea="${clean.substring(0,80)}"`);
+      results.push(smart);
+    }
+  }
+
+  console.log(`%cTotal marcadores encontrados: ${results.length}`, 'font-weight:bold');
+  results.forEach(r => console.log(`  ${r.key}: ${r.value} ${r.unit}`));
+  console.groupEnd();
+  return results;
+}
+
+// ═══════════════════════════════════════════
+// 4. ANALYZER
+// ═══════════════════════════════════════════
+function getRange(marker, sex) {
+  let rmin = marker.min, rmax = marker.max;
+  if (sex === 'M' && marker.minM !== undefined) { rmin = marker.minM; rmax = marker.maxM; }
+  if (sex === 'F' && marker.minF !== undefined) { rmin = marker.minF; rmax = marker.maxF; }
+  if (rmax === 999) rmax = null; // HDL: no real upper limit
+  return { rmin, rmax };
+}
+
+function analyzeResult(r, sex) {
+  const { rmin, rmax } = getRange(r.marker, sex);
+  const min = r.rmin ?? rmin;
+  const max = r.rmax ?? rmax;
+
+  // Calculate position
+  let status = 'normal', diff = 0, pos = 50;
+  const alarmLow = r.marker.alarmLow;
+  const alarmHigh = r.marker.alarmHigh;
+
+  if (max !== null && r.value > max) {
+    const over = (r.value - max) / max * 100;
+    if (over > 20 || (alarmHigh && r.value >= alarmHigh)) status = 'alarm';
+    else status = 'attention';
+    diff = +((r.value - max).toFixed(2));
+    pos = 100 + Math.min(over, 20);
+  } else if (r.value < min) {
+    const under = (min - r.value) / min * 100;
+    if (under > 20 || (alarmLow && r.value <= alarmLow)) status = 'alarm';
+    else status = 'attention';
+    diff = -((min - r.value).toFixed(2));
+    pos = Math.max(0, 10 - under);
+  } else {
+    // Within range — calculate position
+    if (max !== null && max !== min) {
+      pos = ((r.value - min) / (max - min)) * 100;
+    } else { pos = 50; }
+    diff = 0;
+  }
+
+  return { ...r, status, diff, pos: Math.max(0, Math.min(pos, 110)), rmin: min, rmax: max };
+}
+
+function calculateScore(analyzed) {
+  let total = 0, count = 0;
+  analyzed.forEach(r => {
+    const w = r.status === 'alarm' ? 0 : r.status === 'attention' ? 50 : 100;
+    total += w; count++;
+  });
+  return count === 0 ? 80 : Math.round(total / count);
+}
+
+// ═══════════════════════════════════════════
+// 5. PLAN GENERATOR
+// ═══════════════════════════════════════════
+function generatePlan(analyzed) {
+  const plan = { diet:[], exercise:[], supps:[], lifestyle:[], followup:[] };
+  const flags = {};
+  analyzed.forEach(r => { if (r.status !== 'normal') flags[r.key] = r; });
+  const ctx = patientCtx;
+  const alarmList = analyzed.filter(r => r.status === 'alarm');
+  const attnList  = analyzed.filter(r => r.status === 'attention');
+  const lowFerritin = flags.ferritina && flags.ferritina.value < (flags.ferritina.rmin || 12);
+  const lowVitD  = flags.vitamina_d && flags.vitamina_d.value < (flags.vitamina_d.rmin || 20);
+  const highVitD = flags.vitamina_d && flags.vitamina_d.value > (flags.vitamina_d.rmax || 60);
+  const lowB12   = flags.vitamina_b12 && flags.vitamina_b12.value < (flags.vitamina_b12.rmin || 200);
+
+  // ── DIETA ────────────────────────────────────────
+  if (flags.ldl || flags.colesterol_total) {
+    plan.diet.push({ heading:'Para bajar el LDL y optimizar el colesterol', color:'blue', items:[
+      'Elimina <strong>grasas trans e hidrogenadas</strong>: margarina, pastelería industrial, fritos de fast food',
+      'Limita <strong>carnes rojas grasas</strong> a máximo 1-2x/semana; prefiere carnes blancas y pescado',
+      'Consume <strong>avena integral</strong> (80g en el desayuno) y <strong>leguminosas</strong> (lentejas, garbanzos) 4-5x/semana — la fibra soluble reduce el LDL activamente',
+      'Come <strong>ajo crudo</strong> (1-2 dientes/día) — efecto documentado sobre lípidos',
+      'Prefiere cocinar al vapor, horno o plancha',
+    ]});
+  }
+  if (flags.hdl) {
+    plan.diet.push({ heading:'Para subir el HDL (colesterol bueno)', color:'green', items:[
+      'Usa <strong>aceite de oliva virgen extra</strong> como grasa principal: 2-3 cucharadas/día en ensaladas y cocina',
+      'Come <strong>aguacate</strong> ½ al día — aumenta HDL y aporta grasas monoinsaturadas cardioprotectoras',
+      'Incorpora <strong>nueces, almendras y pistachos</strong> (un puñado ~30g) como snack diario',
+      'Aumenta <strong>pescados grasos</strong> (salmón, sardinas, trucha) 3x/semana — ricos en Omega-3',
+      'Reduce <strong>azúcares simples y harinas refinadas</strong> — bajan el HDL aunque no "se vean" como grasas',
+    ]});
+  }
+  if (flags.trigliceridos) {
+    plan.diet.push({ heading:'Para bajar los triglicéridos', color:'orange', items:[
+      'Reduce drásticamente <strong>azúcares simples y harinas refinadas</strong> — son la principal causa de triglicéridos altos',
+      'Elimina o reduce al mínimo el <strong>alcohol</strong>, especialmente la cerveza',
+      'Reemplaza pan blanco y arroz blanco por versiones integrales',
+      'Limita jugos de fruta industriales y bebidas azucaradas',
+    ]});
+  }
+  if (flags.glucosa || flags.hba1c || ctx.diabetes || ctx.prediabetes) {
+    plan.diet.push({ heading:'Para controlar la glucosa', color:'purple', items:[
+      'Elige <strong>carbohidratos de bajo índice glucémico</strong>: arroz integral, quinoa, batata, avena',
+      'Combina siempre carbohidratos con proteína o grasa saludable para frenar el pico de azúcar postprandial',
+      'Distribuye en <strong>3 comidas principales + 1-2 meriendas</strong> — evita ayunos prolongados',
+      'Elimina bebidas azucaradas, jugos industriales y postres con azúcar añadida',
+    ]});
+  }
+  if (flags.creatinina || flags.urea || ctx.ckd) {
+    plan.diet.push({ heading:'Para proteger los riñones', color:'yellow', items:[
+      'Modera la <strong>proteína animal</strong> a máximo 1.0-1.2 g/kg de peso/día — no excedas con proteínas en polvo',
+      '<strong>Hidratación activa</strong>: 2.5-3 litros de agua al día — esencial para la función renal',
+      'Reduce el <strong>exceso de sal</strong>: máximo 5g/día (1 cucharadita)',
+      'Aumenta <strong>verduras alcalinizantes</strong>: pepino, apio, sandía, limón',
+    ]});
+  }
+  if (flags.acido_urico || ctx.gout) {
+    plan.diet.push({ heading:'Para reducir el ácido úrico', color:'red', items:[
+      'Evita <strong>carnes rojas, vísceras y mariscos</strong> en exceso — son ricos en purinas',
+      'Elimina el <strong>alcohol</strong>, especialmente la cerveza',
+      'Aumenta el agua (mínimo 2.5 L/día) — ayuda a eliminar el ácido úrico',
+      'Los <strong>lácteos bajos en grasa</strong> tienen efecto protector contra la gota',
+    ]});
+  }
+  if (lowFerritin) {
+    plan.diet.push({ heading:'Para subir el hierro', color:'red', items:[
+      'Aumenta <strong>espinacas, lentejas, semillas de calabaza</strong> y carnes magras',
+      'Combina hierro vegetal con <strong>vitamina C</strong> (limón, kiwi, pimiento) — mejora la absorción hasta 3×',
+      'Evita <strong>café y té</strong> junto a las comidas — reducen la absorción de hierro',
+    ]});
+  }
+  if (ctx.osteoporosis) {
+    plan.diet.push({ heading:'Para la salud ósea', color:'teal', items:[
+      'Asegura <strong>1,200 mg de calcio diario</strong>: lácteos, sardinas con espinas, brócoli, almendras',
+      'La vitamina D óptima (40-60 ng/mL) es indispensable para absorber el calcio',
+      'Reduce el <strong>alcohol y la cafeína</strong> en exceso — afectan la densidad ósea',
+    ]});
+  }
+  if (ctx.liver) {
+    plan.diet.push({ heading:'Para tu hígado', color:'yellow', items:[
+      'Elimina el <strong>alcohol</strong> completamente',
+      'Reduce <strong>grasas saturadas y azúcares simples</strong> — principal causa de hígado graso',
+      'El <strong>café sin azúcar</strong> (2-3 tazas/día) tiene efecto hepatoprotector documentado',
+      'Prefiere aceite de oliva y evita frituras',
+    ]});
+  }
+  if (ctx.hypertension) {
+    plan.diet.push({ heading:'Para tu presión arterial (dieta DASH)', color:'blue', items:[
+      'Limita el <strong>sodio a máximo 2,300 mg/día</strong> (≈1 cucharadita de sal). Lee etiquetas',
+      'Aumenta frutas, verduras y lácteos bajos en grasa',
+      'Reduce procesados, embutidos y comidas de restaurante',
+    ]});
+  }
+  if (ctx.vegetarian) {
+    plan.diet.push({ heading:'Para tu dieta vegetariana/vegana', color:'green', items:[
+      'Combina proteínas vegetales: <strong>leguminosas + cereales</strong> en la misma comida (frijoles + arroz)',
+      'Consume hierro vegetal con vitamina C para mejorar su absorción',
+      'Incluye nueces, semillas de chía y lino — fuentes de omega-3 vegetal',
+    ]});
+  }
+  // Base siempre
+  plan.diet.push({ heading:'Recomendaciones generales de base', color:'green', items:[
+    'Aumenta <strong>vegetales de hoja verde oscura</strong> (espinaca, kale, brócoli): mínimo 2 porciones/día',
+    'Prioriza alimentos reales — limita ultraprocesados, azúcares añadidos y harinas refinadas',
+    'Reduce el <strong>alcohol al mínimo</strong> — afecta triglicéridos, presión arterial y función hepática',
+  ]});
+
+  // ── EJERCICIO ─────────────────────────────────────
+  const cardioItems = [
+    '<strong>150-200 minutos/semana</strong> de cardio moderado: caminar rápido (6-7 km/h), trotar suave, ciclismo, natación',
+    'Intensidad <strong>moderada</strong>: puedes hablar con frases cortas pero falta aliento para conversación fluida',
+    'Distribuye en <strong>5 sesiones de 30-40 minutos</strong> — mejor que 2 sesiones largas',
+  ];
+  if (flags.hdl || flags.ldl || flags.colesterol_total) cardioItems.push('El ejercicio aeróbico es el <strong>mejor elevador natural del HDL</strong> — la constancia es clave');
+  if (flags.glucosa || flags.hba1c || ctx.diabetes) cardioItems.push('Una <strong>caminata de 15-20 minutos después de comer</strong> reduce el pico de glucosa hasta un 30%');
+  if (ctx.cardiac) cardioItems.push('<strong>⚠️ Importante:</strong> dado tu historial cardíaco, evita esfuerzos máximos sin autorización cardiológica. Zonas 1-2 son seguras.');
+  if (flags.hemoglobina || flags.hematocrito) cardioItems.push('Con glóbulos rojos elevados: <strong>mantente bien hidratado</strong> antes, durante y después. Evita altitudes extremas.');
+  plan.exercise.push({ heading:'Ejercicio aeróbico (prioridad máxima)', color:'green', items: cardioItems });
+
+  const fuerzaItems = [
+    '<strong>2-3 días/semana</strong> de pesas o ejercicios de resistencia corporal — mejora la sensibilidad a la insulina',
+    'Cargas <strong>moderadas con más repeticiones</strong> (12-15 reps) — más seguro que cargas máximas',
+    'Siempre con <strong>calentamiento de 10 minutos</strong> y vuelta a la calma',
+  ];
+  if (ctx.osteoporosis) fuerzaItems.push('Para osteoporosis: prioriza ejercicios de <strong>impacto y carga</strong> — estimulan la formación de hueso');
+  plan.exercise.push({ heading:'Entrenamiento de fuerza', color:'blue', items: fuerzaItems });
+
+  plan.exercise.push({ heading:'Movimiento diario', color:'purple', items:[
+    'Acumula <strong>8,000-10,000 pasos/día</strong> — rompe el sedentarismo con caminatas cortas cada hora',
+    'Evita períodos de <strong>sedentarismo >2 horas continuas</strong> — levántate y camina 5 minutos',
+    'Considera <strong>yoga o movilidad articular</strong> 2x/semana — reduce estrés y mejora flexibilidad',
+  ]});
+
+  // ── SUPLEMENTOS ───────────────────────────────────
+  const suppsBenefit = [];
+  if (lowVitD)          suppsBenefit.push('☀️ <strong>Vitamina D3: 2,000-4,000 UI/día</strong> con una comida con grasa. Controlar en 3 meses');
+  if (lowB12 || ctx.metformin || ctx.vegetarian) suppsBenefit.push('🔴 <strong>Vitamina B12: 1,000 mcg/día</strong> sublingual. Esencial si tomas Metformina o sigues dieta vegetariana');
+  if (lowFerritin)      suppsBenefit.push('⚡ <strong>Hierro polimaltosado o sulfato ferroso</strong> — tomar en ayunas con vitamina C. Indicado por médico');
+  if (flags.hdl || flags.ldl || flags.trigliceridos || ctx.cardiac) suppsBenefit.push('🐟 <strong>Omega-3 (EPA+DHA) 2-4g/día</strong> con las comidas — reduce triglicéridos, apoya el HDL y es antiinflamatorio');
+  if (ctx.cardiac || ctx.pcsk9) suppsBenefit.push('💊 <strong>Coenzima Q10 (100-200mg/día)</strong> — especialmente relevante con terapia PCSK9. Apoya energía mitocondrial y salud cardíaca');
+  if (flags.glucosa || flags.hba1c || ctx.diabetes || ctx.prediabetes) {
+    suppsBenefit.push('🌿 <strong>Berberina: 500mg 2-3x/día</strong> con comidas — eficacia comparable a Metformina en prediabetes (consultar médico)');
+    suppsBenefit.push('💊 <strong>Magnesio glicinato: 200-400mg/noche</strong> — mejora sensibilidad a la insulina y calidad del sueño');
+  }
+  if (flags.pcr || ctx.autoimmune) suppsBenefit.push('🌿 <strong>Cúrcuma con piperina: 500-1,000mg/día</strong> — propiedades antiinflamatorias documentadas');
+  if (suppsBenefit.length === 0) suppsBenefit.push('✅ No se identificaron deficiencias evidentes. Mantén niveles óptimos con dieta variada y solicita perfil nutricional a tu médico');
+  plan.supps.push({ heading:'✅ Potencialmente beneficiosos (habla con tu médico)', color:'green', items: suppsBenefit });
+
+  const suppsAvoid = [];
+  if (highVitD)         suppsAvoid.push('<strong>Vitamina D: NO suplementar</strong> — ya estás sobre el umbral óptimo (>60 ng/mL). Espera que baje a 40-55 antes de retomar');
+  if ((flags.hemoglobina || flags.hematocrito) && flags.hemoglobina?.value > (flags.hemoglobina?.rmax || 17.5)) suppsAvoid.push('<strong>Hierro: NO suplementar</strong> — tu hemoglobina ya está elevada. El hierro extra empeoraría la policitemia');
+  if (ctx.thyroid_meds || flags.tsh) suppsAvoid.push('<strong>Biotina >5mg/día: evitar</strong> — puede interferir con pruebas de TSH y hormonas tiroideas, dando resultados falsos');
+  if (flags.tsh && !flags.tsh?.value > flags.tsh?.rmax) suppsAvoid.push('<strong>Kelp o suplementos de yodo: evitar</strong> — con posible hipertiroidismo, el yodo puede empeorar la condición');
+  if (suppsAvoid.length > 0) plan.supps.push({ heading:'🚫 Evitar actualmente', color:'red', items: suppsAvoid });
+
+  plan.supps.push({ heading:'⚠️ Aviso importante', color:'yellow', items:[
+    'Todos los suplementos deben discutirse con tu médico tratante, especialmente si tienes enfermedades crónicas o tomas medicamentos',
+    'Los suplementos <strong>NO reemplazan</strong> la medicación prescrita ni los cambios de estilo de vida',
+  ]});
+
+  // ── ESTILO DE VIDA ────────────────────────────────
+  const sleepItems = [
+    '<strong>7-8 horas de sueño</strong> de calidad cada noche — el sueño regula hormonas, metabolismo e inflamación',
+    'Mantén un <strong>horario de sueño consistente</strong>: acuéstate y despiértate a la misma hora ±30 min',
+    'Crea un ambiente fresco, oscuro y silencioso. Evita pantallas 1 hora antes de dormir',
+  ];
+  if (flags.tsh || flags.hemoglobina || flags.hematocrito || flags.globulos_rojos) sleepItems.push('¿Roncas? ¿Te despiertas cansado? La <strong>apnea del sueño</strong> puede elevar los glóbulos rojos y alterar las hormonas tiroideas');
+  if (ctx.sleep_apnea) sleepItems.push('Con apnea diagnosticada: la adherencia al <strong>CPAP todas las noches</strong> es el tratamiento más efectivo');
+  plan.lifestyle.push({ heading:'Sueño (prioridad alta)', color:'indigo', items: sleepItems });
+
+  plan.lifestyle.push({ heading:'Manejo del estrés', color:'green', items:[
+    '<strong>10-15 minutos/día</strong> de meditación o respiración consciente — apps como Calm, Headspace',
+    'El estrés crónico eleva cortisol → sube glucemia, presiona el corazón, afecta la tiroides',
+    '<strong>Conexión social</strong>: tiempo de calidad con familia y amigos tiene impacto medible en salud cardiovascular',
+  ]});
+
+  const hydItems = ['<strong>2.5-3.5 litros de agua/día</strong> — esencial para riñones, circulación y función metabólica'];
+  if (flags.hemoglobina || flags.hematocrito) hydItems.push('Con policitemia: la hidratación es especialmente importante para <strong>reducir la viscosidad sanguínea</strong>');
+  hydItems.push('Bebe un vaso grande de agua al despertar, antes de cada comida y durante el ejercicio');
+  plan.lifestyle.push({ heading:'Hidratación', color:'blue', items: hydItems });
+
+  const otherItems = ['<strong>No fumar</strong> — el tabaco baja el HDL, aumenta triglicéridos, inflama arterias y eleva los glóbulos rojos'];
+  if (!highVitD) otherItems.push('<strong>Exposición solar moderada</strong>: 20-30 minutos en brazos y piernas antes de las 11am o después de las 3pm');
+  otherItems.push('<strong>Monitorea tu presión arterial</strong> en casa — objetivo óptimo: menos de 120/80 mmHg');
+  if (ctx.cardiac) {
+    otherItems.push('<strong>Rehabilitación cardíaca:</strong> pide a tu cardiólogo referencia — reducen la mortalidad hasta un 25%');
+    otherItems.push('<strong>Señales de alarma:</strong> Consulta urgente ante dolor en el pecho, falta de aire en reposo, palpitaciones o mareos súbitos');
+  }
+  if (ctx.hypothyroid) otherItems.push('Toma la <strong>levotiroxina en ayunas</strong>, 30-60 min antes del desayuno, sin calcio, hierro ni antiácidos');
+  if (ctx.hyperthyroid) otherItems.push('Evita el <strong>exceso de yodo</strong> (algas, suplementos, contrastes). Limita la cafeína — empeora las palpitaciones');
+  if (ctx.autoimmune)  otherItems.push('El <strong>estrés activa recaídas</strong> en enfermedades autoinmunes — el manejo del estrés tiene impacto terapéutico directo');
+  plan.lifestyle.push({ heading:'Otros hábitos clave', color:'yellow', items: otherItems });
+
+  // ── SEGUIMIENTO ───────────────────────────────────
+  if (alarmList.length > 0) {
+    plan.followup.push({ heading:'🔴 Urgente (dentro de 1-2 semanas)', color:'red', items:[
+      `Consulta a tu médico por: <strong>${alarmList.map(r=>r.marker.name).join(', ')}</strong>`,
+      ...(flags.tsh ? ['Solicitar <strong>T4 Libre + T3 Libre + anticuerpos tiroideos</strong> (TSI, anti-TPO) + Ecografía tiroidea'] : []),
+      ...(ctx.cardiac && flags.tsh ? ['Informar a tu <strong>cardiólogo sobre el TSH</strong> — el hipertiroidismo aumenta riesgo de arritmias'] : []),
+    ]});
+  }
+
+  const nextApptItems = [];
+  if (attnList.length > 0) nextApptItems.push(`Comenta en tu próxima cita: <strong>${attnList.map(r=>r.marker.name).join(', ')}</strong>`);
+  if (flags.ldl) nextApptItems.push('<strong>Revisión de esquema lipídico con cardiólogo/médico</strong>: evaluar si se requiere ajuste o adición de estatina');
+  if (flags.hemoglobina || flags.hematocrito || flags.globulos_rojos) nextApptItems.push('<strong>Hemograma completo de control</strong>: monitorear policitemia. Descartar apnea del sueño');
+  if (flags.creatinina || flags.urea) nextApptItems.push('<strong>Creatinina + TFG calculada</strong>: evaluación completa de función renal');
+  if (ctx.cardiac) nextApptItems.push('Consulta a <strong>medicina del sueño o neumología</strong> para descartar apnea del sueño');
+  if (nextApptItems.length > 0) plan.followup.push({ heading:'🟠 Próxima cita médica (1-3 meses)', color:'orange', items: nextApptItems });
+
+  const routineItems = [];
+  if (flags.ldl || flags.hdl || flags.trigliceridos) routineItems.push('<strong>Perfil lipídico completo</strong>: evaluar respuesta a cambios en dieta y ejercicio');
+  if (flags.glucosa || flags.hba1c || ctx.diabetes) routineItems.push('<strong>Glucemia + HbA1c</strong>: monitorear tendencia glucémica');
+  if (highVitD || lowVitD) routineItems.push('<strong>Vitamina D</strong>: verificar normalización tras ajuste de suplementos');
+  if (flags.tsh) routineItems.push('<strong>TSH de control</strong>: evaluar respuesta al tratamiento tiroideo');
+  if (flags.creatinina) routineItems.push('<strong>Creatinina + TFG</strong>: confirmar estabilidad de función renal');
+  if (ctx.diabetes) routineItems.push('Revisión anual de fondo de ojo, <strong>microalbuminuria</strong> y pie diabético');
+  if (routineItems.length > 0) plan.followup.push({ heading:'🟡 Seguimiento rutinario (3-6 meses)', color:'yellow', items: routineItems });
+
+  plan.followup.push({ heading:'🟢 Anualmente', color:'green', items:[
+    'Laboratorio completo: perfil metabólico, lipídico, hepático, renal y hemograma',
+    ...(ctx.cardiac ? ['Electrocardiograma + valoración cardiológica anual'] : []),
+    'Control de presión arterial y peso corporal',
+    'Evaluación de riesgo cardiovascular actualizada con tu médico',
+    ...(ctx.vegetarian ? ['Monitoreo de B12, vitamina D, hierro, zinc y omega-3'] : []),
+  ]});
+
+  return plan;
+}
+
+// ═══════════════════════════════════════════
+// 6. RENDER
+// ═══════════════════════════════════════════
+function statusBadge(s){
+  if(s==='alarm') return {bg:'bg-red-100',text:'text-red-700',icon:'🔴',label:'Alarma',border:'border-red-300'};
+  if(s==='attention') return {bg:'bg-yellow-100',text:'text-yellow-700',icon:'⚠️',label:'Atención',border:'border-yellow-300'};
+  return {bg:'bg-green-100',text:'text-green-700',icon:'✅',label:'Normal',border:'border-green-200'};
+}
+
+function renderGauge(score) {
+  const c = document.getElementById('gaugeChart');
+  if(state.chartInstances.gauge) state.chartInstances.gauge.destroy();
+  const color = score>=80?'#10b981':score>=60?'#f59e0b':'#ef4444';
+  state.chartInstances.gauge = new Chart(c, {
+    type:'doughnut',
+    data:{ datasets:[{data:[score,100-score],backgroundColor:[color,'#f1f5f9'],borderWidth:0,circumference:270,rotation:225}] },
+    options:{ cutout:'78%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:1200} }
+  });
+  const label = score>=80?'🟢 Muy bueno':score>=65?'🟡 Mejorable':'🔴 Requiere atención';
+  const color2 = score>=80?'text-emerald-600':score>=65?'text-yellow-500':'text-red-500';
+  document.getElementById('scoreLabel').textContent = label.split(' ').slice(1).join(' ');
+  document.getElementById('scoreLabel').className = `text-lg font-bold ${color2}`;
+  document.getElementById('scoreNum').className = `text-5xl font-extrabold ${color2}`;
+  // animate number
+  let n=0; const el=document.getElementById('scoreNum');
+  const iv=setInterval(()=>{n+=2;if(n>=score){n=score;clearInterval(iv);}el.textContent=n;},18);
+}
+
+function renderCategories(analyzed) {
+  const grid = document.getElementById('categoryGrid');
+  grid.innerHTML = '';
+  const cats = {};
+  analyzed.forEach(r => {
+    if (!cats[r.marker.cat]) cats[r.marker.cat] = [];
+    cats[r.marker.cat].push(r.status);
+  });
+  Object.entries(cats).forEach(([cat, statuses]) => {
+    const info = CAT_INFO[cat] || {label:cat,icon:'🔬'};
+    const overall = statuses.includes('alarm')?'alarm':statuses.includes('attention')?'attention':'normal';
+    const badge = statusBadge(overall);
+    const alarmCount = statuses.filter(s=>s==='alarm').length;
+    const attentionCount = statuses.filter(s=>s==='attention').length;
+    const normalCount = statuses.filter(s=>s==='normal').length;
+    const div = document.createElement('div');
+    div.className = `card bg-white rounded-2xl shadow-sm p-5 fade-up cursor-pointer hover:shadow-md transition-shadow ${overall==='alarm'?'border-2 border-red-500 alarm-pulse':overall==='attention'?'border-2 border-yellow-400':'border border-gray-100'}`;
+    div.innerHTML = `
+      <div class="flex justify-between items-start mb-3">
+        <span class="text-3xl">${info.icon}</span>
+        <span class="${badge.bg} ${badge.text} text-xs font-bold px-2 py-0.5 rounded-full">${badge.icon}</span>
+      </div>
+      <p class="font-bold text-slate-900 text-sm mb-2">${info.label}</p>
+      <div class="flex gap-2 flex-wrap">
+        ${alarmCount ? `<span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">${alarmCount} 🚨</span>` : ''}
+        ${attentionCount ? `<span class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-medium">${attentionCount} ⚠️</span>` : ''}
+        ${normalCount ? `<span class="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">${normalCount} ✅</span>` : ''}
+      </div>`;
+    div.onclick = () => {
+      document.getElementById('filterCat').value = cat;
+      document.getElementById('filterStatus').value = 'all';
+      applyFilter();
+      document.getElementById('filterCat').closest('section')?.scrollIntoView({behavior:'smooth'});
+    };
+    grid.appendChild(div);
+  });
+}
+
+function generateNote(r) {
+  const ctx = patientCtx;
+  const hi = r.value > (r.rmax ?? 99999);
+  const k = r.key;
+  if (r.status === 'normal') {
+    if (k==='hba1c') return '🎉 Excelente control glucémico a largo plazo.';
+    if (k==='glucosa' && r.value<=90) return '✅ Glucosa en rango óptimo.';
+    if (k==='ldl' && r.value<=70) return '🎉 En meta cardioprotectora — excelente.';
+    if (k==='hdl') return 'Colesterol protector en rango adecuado.';
+    if (k==='alt'||k==='ast') return 'Función hepática conservada.';
+    if (k==='tsh') return 'Hormona tiroidea en rango normal.';
+    return '';
+  }
+  if (k==='tsh') {
+    if (!hi) { const x=r.rmin&&r.value?Math.round(r.rmin/r.value):9; return `🚨 CRÍTICO: ${x}× por debajo del mínimo. Posible hipertiroidismo — evaluar urgente.`; }
+    return 'TSH elevada — posible hipotiroidismo. Evaluar con T4 Libre.';
+  }
+  if (k==='ldl') {
+    if (ctx.cardiac||ctx.pcsk9) return `⚠️ Para tu riesgo cardiovascular alto, la meta es <55 mg/dL. Tu valor está ${Math.round((r.value/55-1)*100)}% sobre el objetivo.`;
+    if (ctx.statins) return `⚠️ Con estatinas la meta es <70 mg/dL. Tu valor supera el objetivo.`;
+    if (ctx.diabetes||ctx.hypertension) return `⚠️ Con tu perfil de riesgo, la meta recomendada es <100 mg/dL.`;
+    return hi ? 'LDL elevado — riesgo cardiovascular aumentado. Ajustar dieta y evaluar tratamiento.' : '';
+  }
+  if (k==='hdl') return hi ? 'HDL alto — excelente protección cardiovascular.' : 'HDL bajo. El ejercicio aeróbico es el mejor elevador natural.';
+  if (k==='hemoglobina'||k==='hematocrito'||k==='globulos_rojos') {
+    if (hi) return ctx.cardiac ? 'Policitemia: sangre más espesa — mayor riesgo cardiovascular en tu caso. Evaluar apnea del sueño y JAK2.' : 'Levemente elevado. Patrón conjunto con Hct y RBC: evaluar policitemia. Descartar apnea del sueño.';
+    return 'Bajo — posible anemia. Solicitar perfil de hierro y vitamina B12.';
+  }
+  if (k==='creatinina') return hi ? ((ctx.acei||ctx.arb) ? 'Leve elevación esperada con IECA/ARA-II — efecto protector del riñón. Correlacionar con TFG.' : 'Sobre el límite. Correlacionar con masa muscular y solicitar TFG.') : '';
+  if (k==='vitamina_d') return hi ? 'Sobre umbral de toxicidad (>60 ng/mL). Suspender suplementos de vitamina D inmediatamente.' : 'Deficiente. Iniciar suplementación con vitamina D3.';
+  if (k==='vitamina_b12') return ctx.metformin ? 'Metformina puede reducir la absorción de B12 — monitoreo anual recomendado.' : (hi ? 'Sobre el límite. Generalmente sin consecuencias clínicas relevantes.' : 'Deficiente. Riesgo de anemia megaloblástica y daño nervioso progresivo.');
+  if (k==='glucosa') return hi ? (ctx.diabetes ? 'Fuera del objetivo para diabetes (80-130 mg/dL). Revisar tratamiento.' : 'Elevada. Riesgo de prediabetes — solicitar HbA1c para confirmación.') : 'Bajo — riesgo de hipoglucemia.';
+  if (k==='hba1c') return hi ? (ctx.diabetes ? 'Sobre meta (<7.0%) — revisar y ajustar esquema de tratamiento.' : 'En rango de prediabetes (5.7-6.4%). Iniciar cambios de estilo de vida urgentes.') : '';
+  if (k==='trigliceridos') return hi ? 'Elevados. Reducir azúcares simples, harinas refinadas y alcohol.' : '';
+  if (k==='colesterol_total') return hi ? 'Colesterol total alto. Evaluar perfil lipídico completo con LDL y HDL.' : '';
+  if (k==='alt'||k==='ast') return hi ? (ctx.statins ? 'Leve elevación posiblemente por estatinas. Si <3× el límite superior, generalmente aceptable sin suspender.' : 'Enzimas hepáticas elevadas — evaluar causa (dieta, alcohol, medicamentos).') : '';
+  if (k==='acido_urico') return hi ? (ctx.gout ? `Meta en gota: <6.0 mg/dL. Tu valor requiere ajuste de tratamiento con tu médico.` : 'Hiperuricemia. Riesgo de gota. Reducir carnes rojas, vísceras y alcohol.') : '';
+  if (k==='pcr') return hi ? 'Inflamación activa detectada. Identificar y tratar la causa subyacente.' : '';
+  if (k==='ferritina') return hi ? 'Elevada — puede indicar inflamación crónica o sobrecarga de hierro.' : 'Reservas de hierro agotadas. Precede a la anemia ferropénica.';
+  if (k==='hierro') return hi ? 'Elevado — descartar hemocromatosis.' : 'Hierro bajo. Complementar con perfil de hierro completo.';
+  if (k==='leucocitos') return hi ? 'Elevados — posible infección o inflamación activa.' : 'Bajos — mayor vulnerabilidad a infecciones.';
+  if (k==='plaquetas') return hi ? 'Elevadas — evaluar causa subyacente con hemograma completo.' : 'Bajas — riesgo de sangrado. Consultar médico pronto.';
+  if (k==='vcm') return hi ? 'Macrocitosis — solicitar vitamina B12 y folato sérico.' : 'Microcitosis — sugiere deficiencia de hierro o talasemia menor.';
+  if (k==='rdw') return 'Alta variabilidad en tamaño de glóbulos rojos. Solicitar perfil de hierro y vitaminas B12/folato.';
+  if (k==='neutrofilos') return hi ? (ctx.cortico ? 'Neutrofilia por corticoides — efecto esperado, no infección.' : 'Neutrofilia — posible infección bacteriana o inflamación.') : 'Neutropenia — mayor riesgo de infecciones bacterianas.';
+  if (k==='linfocitos') return hi ? 'Linfocitosis — descartar infección viral o proceso linfoproliferativo.' : 'Linfopenia — posible inmunosupresión.';
+  if (k==='eosinofilos') return hi ? 'Eosinofilia — descartar parasitosis intestinal o alergia activa.' : 'Levemente bajo. Generalmente sin significado clínico aislado.';
+  if (k==='monocitos') return hi ? 'Monocitosis — posible infección crónica o proceso inflamatorio.' : '';
+  if (k==='urea') return hi ? (ctx.ckd ? 'Elevada en contexto de ERC — monitorear junto con creatinina y TFG.' : 'Elevada. Asegurar hidratación adecuada y moderar proteína animal.') : '';
+  const rStr = r.rmax ? `${r.rmin}–${r.rmax} ${r.unit}` : `>${r.rmin} ${r.unit}`;
+  return hi ? `Sobre el rango normal (${rStr}).` : `Bajo el rango normal (${rStr}).`;
+}
+
+function renderTable(analyzed) {
+  const tbody = document.getElementById('resultsTableBody');
+  tbody.innerHTML = '';
+  analyzed.forEach(r => {
+    const b = statusBadge(r.status);
+    const barColor = r.status==='alarm'?'bg-red-400':r.status==='attention'?'bg-yellow-400':'bg-emerald-400';
+    const rowBg = r.status==='alarm'?'bg-red-50 hover:bg-red-100':r.status==='attention'?'bg-yellow-50 hover:bg-yellow-100':'hover:bg-slate-50';
+    const rangeStr = r.rmax ? `${r.rmin}–${r.rmax}` : `>${r.rmin}`;
+    const diffStr = r.diff > 0 ? `+${r.diff}` : r.diff < 0 ? `${r.diff}` : '✓';
+    const note = generateNote(r);
+    const tr = document.createElement('tr');
+    tr.className = `${rowBg} border-b border-gray-100 transition-colors`;
+    tr.dataset.status = r.status;
+    tr.dataset.cat = r.marker.cat;
+    tr.innerHTML = `
+      <td class="py-3 px-4">
+        <div class="font-medium text-slate-800 text-sm">${r.marker.name}</div>
+        ${note ? `<div class="text-xs text-slate-500 mt-0.5 max-w-xs leading-relaxed">${note}</div>` : ''}
+      </td>
+      <td class="py-3 px-4 text-right font-bold ${b.text} text-sm whitespace-nowrap">${r.value} <span class="text-xs font-normal text-slate-400">${r.unit}</span></td>
+      <td class="py-3 px-4 text-center text-xs text-slate-500 hidden sm:table-cell">${rangeStr} ${r.unit}</td>
+      <td class="py-3 px-4 text-center">
+        <span class="${b.bg} ${b.text} text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap">${b.icon} ${b.label}</span>
+      </td>
+      <td class="py-3 px-4 hidden lg:table-cell">
+        <div class="flex items-center gap-2">
+          <div class="flex-1 bg-gray-100 h-1.5 rounded-full overflow-hidden min-w-20 relative">
+            <div class="bar h-full rounded-full ${barColor}" style="--w:${Math.min(r.pos,100)}%"></div>
+            ${r.pos>100?`<div class="absolute right-0 top-0 h-full w-1.5 bg-red-500 rounded-r-full"></div>`:''}
+          </div>
+          <span class="${r.diff!==0?b.text:'text-slate-400'} text-xs whitespace-nowrap">${diffStr}</span>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function getNextStep(key, isHigh) {
+  const steps = {
+    tsh: 'Solicitar T4 Libre + T3 Libre + anticuerpos antitiroideos (TSI, anti-TPO) + Ecografía tiroidea.',
+    ldl: 'Revisar esquema de tratamiento con tu médico o cardiólogo. Repetir perfil lipídico en 3 meses.',
+    hdl: 'Aumentar ejercicio aeróbico 5x/semana y ajustar dieta. Repetir perfil lipídico en 3-6 meses.',
+    trigliceridos: 'Eliminar azúcares y alcohol por 1 mes. Repetir triglicéridos para evaluar respuesta.',
+    glucosa: 'Medir glucosa en ayunas en 2-3 ocasiones distintas. Solicitar HbA1c si no se ha hecho.',
+    hba1c: isHigh ? 'Consultar médico para evaluación de diabetes o prediabetes. Iniciar cambios de dieta.' : 'Seguimiento rutinario — el valor es favorable.',
+    creatinina: 'Solicitar cálculo de Tasa de Filtración Glomerular (TFG/eGFR) y repetir en 3 meses bien hidratado.',
+    urea: 'Asegurar buena hidratación y reducir proteína animal. Repetir en 1-3 meses.',
+    hemoglobina: isHigh ? 'Evaluar apnea del sueño. Repetir hemograma hidratado. Si persiste, solicitar JAK2.' : 'Solicitar perfil de hierro (ferritina, hierro sérico, transferrina) y vitamina B12.',
+    hematocrito: isHigh ? 'Igual que hemoglobina: evaluar apnea, hidratación y JAK2 si persiste.' : 'Solicitar perfil de hierro completo.',
+    globulos_rojos: isHigh ? 'Evaluar apnea del sueño y repetir hemograma. Considerar eritropoyetina sérica.' : 'Solicitar perfil de hierro y B12.',
+    vitamina_d: isHigh ? 'Suspender suplementos de vitamina D. Repetir en 6 meses.' : 'Iniciar vitamina D3 2,000-4,000 UI/día. Controlar en 3 meses.',
+    vitamina_b12: 'Iniciar suplementación de B12 1,000 mcg/día. Evaluar causa (dieta, Metformina, gastritis atrófica).',
+    ferritina: isHigh ? 'Solicitar perfil de hierro completo y PCR para descartar inflamación. Consultar médico.' : 'Iniciar suplemento de hierro con guía médica. Repetir ferritina en 3 meses.',
+    hierro: isHigh ? 'Descartar hemocromatosis con médico.' : 'Aumentar alimentos ricos en hierro y vitamina C. Suplemento si indica médico.',
+    pcr: 'Identificar y tratar la causa de inflamación. Repetir PCR en 4-6 semanas.',
+    acido_urico: 'Cambios dietéticos urgentes (reducir purinas y alcohol). Si hay dolor articular, consultar reumatólogo.',
+    leucocitos: isHigh ? 'Descartar infección activa. Repetir en 2-4 semanas.' : 'Consultar médico si hay infecciones frecuentes.',
+    plaquetas: isHigh ? 'Repetir hemograma. Consultar médico si persiste.' : 'Consultar médico — plaquetas bajas pueden indicar riesgo de sangrado.',
+    neutrofilos: isHigh ? 'Descartar infección bacteriana activa con examen físico.' : 'Consultar médico si hay infecciones frecuentes.',
+    linfocitos: isHigh ? 'Descartar infección viral o proceso linfoproliferativo.' : 'Consultar médico si hay inmunosupresión.',
+    eosinofilos: isHigh ? 'Descartar parasitosis (coproparasitario) o alergia activa.' : 'Generalmente sin acción requerida.',
+    vcm: isHigh ? 'Solicitar vitamina B12, folato sérico y perfil hepático.' : 'Solicitar perfil de hierro completo (ferritina, hierro, transferrina).',
+    rdw: 'Solicitar perfil de hierro y vitaminas B12 + folato para identificar deficiencia mixta.',
+  };
+  return steps[key] || 'Discutir este resultado con tu médico en la próxima consulta.';
+}
+
+function buildFindingCard(id, { emoji, title, statusKey, valLine, what, meaning, causes, symptoms, urgencyLabel, urgencyBg, borderColor, ctxNotes, nextStep }) {
+  return `
+    <div class="bg-white rounded-2xl shadow-sm ${statusKey==='alarm'?'border-2 border-red-500 alarm-pulse':'border-l-4 '+borderColor} overflow-hidden fade-up">
+      <button onclick="toggleExpand('exp${id}')" class="w-full text-left p-5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+        <span class="text-3xl shrink-0">${emoji}</span>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <h4 class="font-bold text-slate-900">${title}</h4>
+            <span class="${statusKey==='alarm'?'bg-red-100 text-red-700':'bg-yellow-100 text-yellow-700'} text-xs font-bold px-2 py-0.5 rounded-full">${statusKey==='alarm'?'🔴 ALARMA':'⚠️ ATENCIÓN'}</span>
+          </div>
+          <div class="text-sm text-slate-500">${valLine}</div>
+        </div>
+        <svg id="chev${id}" class="chevron w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div id="exp${id}" class="expand-body">
+        <div class="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
+          <div class="${urgencyBg} border rounded-xl p-3 text-sm font-semibold">${urgencyLabel}</div>
+          <div>
+            <p class="font-semibold text-slate-700 text-sm mb-1">¿Qué mide este examen?</p>
+            <p class="text-slate-600 text-sm leading-relaxed">${what}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-700 text-sm mb-1">¿Qué significa en tu caso?</p>
+            <p class="text-slate-600 text-sm leading-relaxed">${meaning}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-700 text-sm mb-2">Posibles causas</p>
+            <ul class="space-y-1">${causes.map(c=>`<li class="flex gap-2 text-sm text-slate-600"><span class="text-indigo-400 shrink-0 mt-0.5">•</span>${c}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-700 text-sm mb-1">Señales físicas que pueden acompañarlo</p>
+            <p class="text-slate-600 text-sm leading-relaxed">${symptoms}</p>
+          </div>
+          ${ctxNotes && ctxNotes.length ? `
+            <div class="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-2">
+              <p class="font-semibold text-violet-800 text-sm">🩺 Contexto de tu perfil médico</p>
+              ${ctxNotes.map(n=>`<p class="text-violet-700 text-sm leading-relaxed">${n}</p>`).join('')}
+            </div>` : ''}
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+            <p class="font-semibold text-indigo-800 text-sm mb-1">📋 Próximo paso recomendado</p>
+            <p class="text-indigo-700 text-sm">${nextStep}</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFindings(analyzed) {
+  const container = document.getElementById('findingsContainer');
+  container.innerHTML = '';
+  const notable = analyzed.filter(r => r.status !== 'normal');
+  document.getElementById('noFindings').classList.toggle('hidden', notable.length > 0);
+  notable.sort((a,b) => (a.status==='alarm'?0:1) - (b.status==='alarm'?0:1));
+
+  const ctx = patientCtx;
+  const cards = [];
+
+  // ── Detect policitemia syndrome (RBC + Hct + Hgb all elevated) ──────
+  const rbcR  = analyzed.find(r=>r.key==='globulos_rojos');
+  const hctR  = analyzed.find(r=>r.key==='hematocrito');
+  const hgbR  = analyzed.find(r=>r.key==='hemoglobina');
+  const polyKeys = new Set(['globulos_rojos','hematocrito','hemoglobina']);
+  const rbcHi = rbcR && rbcR.value > (rbcR.rmax ?? rbcR.marker.maxM ?? rbcR.marker.max ?? 6.2);
+  const hctHi = hctR && hctR.value > (hctR.rmax ?? hctR.marker.maxM ?? hctR.marker.max ?? 52);
+  const hgbHi = hgbR && hgbR.value > (hgbR.rmax ?? hgbR.marker.maxM ?? hgbR.marker.max ?? 17.5);
+  const isPoly = rbcHi && hctHi && hgbHi;
+
+  if (isPoly) {
+    const polyMeaning = ctx.cardiac
+      ? `Los tres indicadores de oxígeno en sangre están levemente elevados — patrón llamado policitemia. En tu contexto post-IM, la sangre más viscosa aumenta el riesgo de trombosis (coágulos, ACV, nuevo infarto). El ASA que tomas actúa sobre plaquetas pero no reduce la viscosidad por exceso de glóbulos rojos. Este hallazgo debe investigarse.`
+      : `Los tres indicadores de masa eritrocitaria están sobre el límite — patrón compatible con policitemia. La sangre más densa exige más trabajo al corazón y aumenta el riesgo de coágulos.`;
+    cards.push(buildFindingCard('poly', {
+      emoji: '🩸',
+      title: 'Policitemia — Glóbulos Rojos, Hematocrito y Hemoglobina Elevados',
+      statusKey: 'attention',
+      valLine: `Mi valor: <strong class="text-yellow-600">RBC ${rbcR.value} · Hct ${hctR.value}% · Hgb ${hgbR.value} g/dL</strong> | Ref: RBC <${rbcR.rmax??6.2} · Hct <${hctR.rmax??52}% · Hgb <${hgbR.rmax??17.5}`,
+      what: 'Los glóbulos rojos transportan oxígeno. Cuando hay demasiados, la sangre se vuelve más espesa y viscosa, haciendo que el corazón trabaje más y aumentando el riesgo de coágulos.',
+      meaning: polyMeaning,
+      causes: [
+        'Apnea del sueño (causa más común en hombres — reduce O₂ nocturno, estimulando más glóbulos rojos)',
+        'Deshidratación relativa en el momento de la toma de muestra',
+        'Altitud elevada de residencia',
+        'Tabaquismo activo',
+        'Policitemia vera (trastorno de médula ósea — raro, descartar con JAK2)',
+        'Uso de testosterona o anabólicos'
+      ],
+      symptoms: 'Dolor de cabeza frecuente · Enrojecimiento facial · Mareos · Picazón después del baño caliente (típico de policitemia vera) · Visión borrosa · Sensación de pesadez',
+      urgencyLabel: '🟠 Consultar médico próximamente para investigar la causa',
+      urgencyBg: 'bg-orange-50 border-orange-200 text-orange-800',
+      borderColor: 'border-yellow-400',
+      ctxNotes: ctx.cardiac ? ['❤️ Con historia de infarto de miocardio, la policitemia aumenta el riesgo de eventos trombóticos. Menciona este hallazgo explícitamente a tu cardiólogo.'] : [],
+      nextStep: 'Descartar apnea del sueño (polisomnografía), repetir hemograma bien hidratado, considerar mutación JAK2 si persiste. Si tienes ronquidos o te despiertas cansado, prioriza el estudio de sueño.'
+    }));
+  }
+
+  // ── Individual finding cards ─────────────────────────────────────────
+  notable.forEach((r, i) => {
+    if (isPoly && polyKeys.has(r.key)) return; // already in grouped card
+    const m = r.marker;
+    const isHigh = r.value > (r.rmax ?? 99999);
+    const meaning = isHigh ? m.highMeaning : m.lowMeaning;
+    const causes  = isHigh ? m.highCauses  : m.lowCauses;
+    const symptoms= isHigh ? m.highSymptoms: m.lowSymptoms;
+    const arrow   = isHigh ? '↑ Elevado'   : '↓ Bajo';
+    const urgencyLabel = r.status==='alarm'
+      ? '🔴 Consulta a tu médico en las próximas 1-2 semanas'
+      : '🟠 Comenta en tu próxima consulta médica';
+    const urgencyBg = r.status==='alarm'
+      ? 'bg-red-50 border-red-200 text-red-800'
+      : 'bg-orange-50 border-orange-200 text-orange-800';
+    cards.push(buildFindingCard(`f${i}`, {
+      emoji: CAT_INFO[m.cat]?.icon || '🔬',
+      title: m.name,
+      statusKey: r.status,
+      valLine: `Mi valor: <strong class="${r.status==='alarm'?'text-red-600':'text-yellow-600'}">${r.value} ${r.unit}</strong> | Ref: ${r.rmin??''}${r.rmax?'–'+r.rmax:''} ${r.unit} · <span class="font-semibold">${arrow}</span>`,
+      what: m.what,
+      meaning,
+      causes,
+      symptoms,
+      urgencyLabel,
+      urgencyBg,
+      borderColor: r.status==='alarm' ? 'border-red-500' : 'border-yellow-400',
+      ctxNotes: getContextNotes(r.key, isHigh, ctx),
+      nextStep: getNextStep(r.key, isHigh)
+    }));
+  });
+
+  container.innerHTML = cards.join('');
+}
+
+const PLAN_TABS = { diet:'🥗 Alimentación', exercise:'🏃 Ejercicio', supps:'💊 Suplementos', lifestyle:'😴 Hábitos', followup:'📅 Seguimiento' };
+let currentPlanData = {};
+
+const SECTION_COLORS = {
+  green:'bg-emerald-50 border-emerald-200 text-emerald-800',
+  blue:'bg-blue-50 border-blue-200 text-blue-800',
+  purple:'bg-purple-50 border-purple-200 text-purple-800',
+  yellow:'bg-amber-50 border-amber-200 text-amber-800',
+  red:'bg-red-50 border-red-200 text-red-800',
+  indigo:'bg-indigo-50 border-indigo-200 text-indigo-800',
+  orange:'bg-orange-50 border-orange-200 text-orange-800',
+  teal:'bg-teal-50 border-teal-200 text-teal-800',
+};
+
+function renderPlanTab(key) {
+  const sections = currentPlanData[key] || [];
+  document.getElementById('planContent').innerHTML = `
+    <div class="space-y-5">
+      ${sections.map(s => {
+        const sc = SECTION_COLORS[s.color] || SECTION_COLORS.indigo;
+        return `<div class="border ${sc} rounded-xl p-4">
+          <h4 class="font-semibold mb-3 text-sm">${s.heading}</h4>
+          <ul class="space-y-2">
+            ${s.items.map(item=>`<li class="flex items-start gap-2 text-sm text-slate-700"><span class="mt-1 shrink-0">→</span><span>${item}</span></li>`).join('')}
+          </ul>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function showPlanTab(key, btn) {
+  document.querySelectorAll('[onclick^="showPlanTab"]').forEach(b=>{
+    b.classList.remove('active');b.classList.add('bg-gray-100','text-slate-500');b.classList.remove('text-white');
+  });
+  btn.classList.add('active');btn.classList.remove('bg-gray-100','text-slate-500');
+  renderPlanTab(key);
+}
+
+function renderCharts(analyzed) {
+  // Radar
+  const cats = {};
+  analyzed.forEach(r => {
+    if (!cats[r.marker.cat]) cats[r.marker.cat] = [];
+    cats[r.marker.cat].push(r.status==='alarm'?0:r.status==='attention'?50:100);
+  });
+  const radarLabels = Object.keys(cats).map(k => CAT_INFO[k]?.label||k);
+  const radarData = Object.values(cats).map(arr => Math.round(arr.reduce((a,b)=>a+b,0)/arr.length));
+
+  if(state.chartInstances.radar) state.chartInstances.radar.destroy();
+  state.chartInstances.radar = new Chart(document.getElementById('radarChart'), {
+    type:'radar',
+    data:{
+      labels: radarLabels,
+      datasets:[{
+        label:'Tu salud',
+        data: radarData,
+        backgroundColor:'rgba(99,102,241,.15)',
+        borderColor:'#6366f1',borderWidth:2,
+        pointBackgroundColor:'#6366f1',pointRadius:5,
+      },{
+        label:'Óptimo',
+        data: radarLabels.map(()=>100),
+        backgroundColor:'rgba(16,185,129,.05)',
+        borderColor:'rgba(16,185,129,.4)',borderWidth:1.5,
+        borderDash:[5,5],pointRadius:0,fill:false,
+      }]
+    },
+    options:{
+      scales:{r:{min:0,max:100,ticks:{stepSize:25,font:{size:10}},pointLabels:{font:{size:11,weight:'600'}},grid:{color:'rgba(0,0,0,.05)'}}},
+      plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},boxWidth:12,padding:16}}},animation:{duration:1200}
+    }
+  });
+
+  // Bar chart — key markers
+  const barItems = analyzed.filter(r=>r.rmax).slice(0,12);
+  const barColors = barItems.map(r=>r.status==='alarm'?'rgba(239,68,68,.8)':r.status==='attention'?'rgba(245,158,11,.8)':'rgba(16,185,129,.8)');
+  if(state.chartInstances.bar) state.chartInstances.bar.destroy();
+  state.chartInstances.bar = new Chart(document.getElementById('barChart'), {
+    type:'bar',
+    data:{
+      labels: barItems.map(r=>r.marker.name.length>20?r.marker.name.substring(0,18)+'…':r.marker.name),
+      datasets:[{
+        label:'Posición (%)',
+        data: barItems.map(r=>Math.min(r.pos,110)),
+        backgroundColor: barColors,
+        borderRadius:6,
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      scales:{
+        x:{min:0,max:115,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},
+        y:{ticks:{font:{size:10}},grid:{display:false}}
+      },
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${barItems[ctx.dataIndex].value} ${barItems[ctx.dataIndex].unit}`}}},
+      animation:{duration:1200}
+    },
+    plugins:[{
+      id:'line100',
+      afterDraw(chart){
+        const {ctx,scales:{x}}=chart;
+        const px=x.getPixelForValue(100);
+        ctx.save();ctx.beginPath();ctx.moveTo(px,chart.chartArea.top);ctx.lineTo(px,chart.chartArea.bottom);
+        ctx.strokeStyle='rgba(100,100,100,.35)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);ctx.stroke();ctx.restore();
+      }
+    }]
+  });
+}
+
+// ═══════════════════════════════════════════
+// 7. MAIN ANALYSIS FLOW
+// ═══════════════════════════════════════════
+async function runAnalysis() {
+  const text = state.tab === 'file' ? state.pdfText : document.getElementById('textInput').value;
+
+  if (state.tab === 'file' && state.pdfText === '__IMAGE__') {
+    alert('Las imágenes aún no pueden analizarse automáticamente en esta versión. Por favor usa la pestaña "Pegar texto" y copia los valores de tu resultado manualmente.');
+    return;
+  }
+
+  if (!text.trim() || text.length < 30) { alert('Por favor ingresa tus resultados de laboratorio.'); return; }
+
+  const sex = document.getElementById('patSex').value || '';
+  const name = document.getElementById('patName').value.trim();
+  const age = document.getElementById('patAge').value;
+  const weight = document.getElementById('patWeight').value;
+  const conditions = document.getElementById('patConditions').value.trim();
+  const meds = document.getElementById('patMeds').value.trim();
+
+  // Show loading
+  document.getElementById('upload-section').classList.add('hidden');
+  document.getElementById('loadingSection').classList.remove('hidden');
+
+  // Simulate brief processing delay for UX
+  await new Promise(r => setTimeout(r, 800));
+
+  const parsed = parseLabText(text);
+  if (parsed.length === 0) {
+    document.getElementById('loadingSection').classList.add('hidden');
+    document.getElementById('upload-section').classList.remove('hidden');
+    // If we extracted PDF text but couldn't parse it, move it to the text tab so user can see it
+    if (state.tab === 'file' && text && text !== '__IMAGE__') {
+      document.getElementById('textInput').value = text;
+      switchTab('text');
+      document.getElementById('charCount').textContent = text.length + ' caracteres';
+      alert('No se pudieron detectar resultados automáticamente. El texto extraído del PDF ya está en el campo de texto — puedes revisarlo o corregirlo y volver a intentar.');
+    } else {
+      alert('No se pudieron detectar resultados de laboratorio en el texto. Asegúrate de copiar los valores con sus nombres (ej: Glucosa 95 mg/dL). Intenta con más texto o revisa el formato.');
+    }
+    return;
+  }
+
+  // Build patient context from antecedentes + meds
+  patientCtx = parsePatientContext(conditions, meds);
+
+  // Adjust marker thresholds based on patient context
+  parsed.forEach(r => {
+    if (r.key === 'ldl') {
+      if (patientCtx.cardiac || patientCtx.pcsk9) r.rmax = 55;       // ACC/AHA very-high-risk target
+      else if (patientCtx.diabetes || patientCtx.hypertension) r.rmax = 100; // high-risk target
+      else if (patientCtx.statins) r.rmax = 70;                       // statin target
+    }
+    if (r.key === 'hba1c' && patientCtx.diabetes)  r.rmax = 7.0;     // DM control target
+    if (r.key === 'glucosa' && patientCtx.diabetes) { r.rmin = 80; r.rmax = 130; } // DM fasting target
+    if (r.key === 'creatinina' && patientCtx.ckd)  r.alarmHigh = 2.0; // stricter for CKD
+    if (r.key === 'vitamina_d' && patientCtx.osteoporosis) { r.rmin = 30; r.rmax = 60; } // higher floor for bone health
+    if (r.key === 'acido_urico' && patientCtx.gout) r.rmax = 6.0;    // gout treatment target <6
+  });
+
+  const analyzed = parsed.map(r => analyzeResult(r, sex));
+  analyzed.sort((a, b) => (DISPLAY_ORDER[a.key] ?? 9999) - (DISPLAY_ORDER[b.key] ?? 9999));
+  const score = calculateScore(analyzed);
+  const plan = generatePlan(analyzed);
+  currentPlanData = plan;
+
+  const alarmList = analyzed.filter(r=>r.status==='alarm');
+  const attnList  = analyzed.filter(r=>r.status==='attention');
+  const alarms    = alarmList.length;
+  const attentions = attnList.length;
+  const normals   = analyzed.filter(r=>r.status==='normal').length;
+
+  // Urgent banner
+  const banner = document.getElementById('urgentBanner');
+  if (alarms > 0) {
+    document.getElementById('urgentBannerText').textContent =
+      alarmList.map(r => `${r.marker.name} (${r.value} ${r.unit})`).join(' · ') + '. Consulta a tu médico en los próximos días.';
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  // Fill header
+  document.getElementById('rPatientName').textContent = name ? `Reporte de ${name}` : 'Tu Reporte de Salud';
+  const subParts = [];
+  if(age) subParts.push(`${age} años`);
+  if(sex==='M') subParts.push('Masculino');
+  if(sex==='F') subParts.push('Femenino');
+  if(weight) subParts.push(`${weight} kg`);
+  document.getElementById('rPatientSub').textContent = subParts.join(' · ') || 'Análisis completado';
+  document.getElementById('scoreStats').textContent = `${normals} normales · ${attentions} atención · ${alarms} alarmas`;
+
+  // Executive summary
+  const summaryParts = [];
+  if (alarms === 0 && attentions === 0) {
+    summaryParts.push(`¡Excelentes resultados! Los ${normals} valores analizados están dentro del rango normal`);
+  } else {
+    if (normals > 0) summaryParts.push(`${normals} de tus ${analyzed.length} valores están dentro del rango normal`);
+    if (alarms > 0) summaryParts.push(`${alarms} marcador${alarms>1?'es requieren':'requiere'} atención médica pronta: ${alarmList.map(r=>r.marker.name).join(', ')}`);
+    if (attentions > 0) summaryParts.push(`${attentions} valor${attentions>1?'es están':'está'} fuera del rango óptimo: ${attnList.map(r=>r.marker.name).join(', ')}`);
+  }
+  if (conditions) summaryParts.push(`Antecedentes: ${conditions}`);
+  if (meds) summaryParts.push(`Medicamentos: ${meds}`);
+  // Mention which personalized thresholds were applied
+  const ctxLabels = [];
+  if (patientCtx.cardiac || patientCtx.pcsk9)   ctxLabels.push('objetivo LDL &lt;55 mg/dL por riesgo cardiovascular alto');
+  else if (patientCtx.statins)                   ctxLabels.push('objetivo LDL &lt;70 mg/dL por uso de estatinas');
+  else if (patientCtx.diabetes || patientCtx.hypertension) ctxLabels.push('objetivo LDL &lt;100 mg/dL por riesgo cardiovascular');
+  if (patientCtx.diabetes)    ctxLabels.push('objetivo HbA1c &lt;7.0% y glucosa 80-130 mg/dL para diabetes');
+  if (patientCtx.ckd)         ctxLabels.push('umbral de creatinina ajustado por enfermedad renal crónica');
+  if (patientCtx.gout)        ctxLabels.push('objetivo ácido úrico &lt;6.0 mg/dL por gota');
+  if (patientCtx.osteoporosis) ctxLabels.push('vitamina D mínimo 30 ng/mL por osteoporosis');
+  if (ctxLabels.length) summaryParts.push('Rangos personalizados aplicados: ' + ctxLabels.join('; '));
+  document.getElementById('rSummary').innerHTML = summaryParts.join('. ') + '.';
+
+  // Hide loading, show results
+  document.getElementById('loadingSection').classList.add('hidden');
+  document.getElementById('resultsSection').classList.remove('hidden');
+  document.getElementById('resultsSection').scrollIntoView({behavior:'smooth'});
+
+  // Render all
+  renderGauge(score);
+  renderCategories(analyzed);
+  renderTable(analyzed);
+  renderFindings(analyzed);
+  renderPlanTab('diet');
+  setTimeout(()=>renderCharts(analyzed), 200);
+}
+
+// ═══════════════════════════════════════════
+// 8. UI HELPERS
+// ═══════════════════════════════════════════
+function checkReady() {
+  const ck = document.getElementById('disclaimerCk').checked;
+  const hasText = document.getElementById('textInput').value.length >= 30;
+  const ready = ck && (hasText || state.fileLoaded);
+  document.getElementById('analyzeBtn').disabled = !ready;
+  document.getElementById('btnHint').textContent = !ck
+    ? 'Acepta el aviso médico para continuar'
+    : (!hasText && !state.fileLoaded)
+    ? 'Agrega tus resultados de laboratorio para continuar'
+    : '¡Todo listo! Haz clic para analizar';
+  document.getElementById('charCount').textContent = document.getElementById('textInput').value.length + ' caracteres';
+}
+
+function switchTab(id) {
+  state.tab = id;
+  document.getElementById('panel-file').classList.toggle('hidden', id!=='file');
+  document.getElementById('panel-text').classList.toggle('hidden', id!=='text');
+  document.getElementById('tab-file').className = `tab-btn text-sm font-bold px-5 py-2.5 rounded-xl ${id==='file'?'active':'bg-gray-100'}`;
+  document.getElementById('tab-text').className = `tab-btn text-sm font-bold px-5 py-2.5 rounded-xl ${id==='text'?'active':'bg-gray-100'}`;
+  checkReady();
+}
+
+function clearText() { document.getElementById('textInput').value=''; checkReady(); }
+
+// Drag & drop
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropBorder').classList.add('drag-over'); }
+function onDragLeave() { document.getElementById('dropBorder').classList.remove('drag-over'); }
+function onDrop(e) { e.preventDefault(); onDragLeave(); if(e.dataTransfer.files[0]) loadPDF(e.dataTransfer.files[0]); }
+function onFileSelect(e) { if(e.target.files[0]) loadPDF(e.target.files[0]); }
+
+async function loadPDF(file) {
+  if (file.size > 10*1024*1024) { alert('El archivo supera 10 MB.'); return; }
+
+  const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isImage = file.type.startsWith('image/');
+
+  if (!isPDF && !isImage) {
+    alert('Formato no soportado. Por favor sube un PDF o una imagen (JPG, PNG, HEIC).'); return;
+  }
+
+  // Show loaded state
+  document.getElementById('dropEmpty').classList.add('hidden');
+  document.getElementById('dropLoaded').classList.remove('hidden');
+  document.getElementById('loadedFileName').textContent = file.name;
+  document.getElementById('loadedFileSize').textContent = (file.size/1024).toFixed(0) + ' KB';
+
+  // For images: show a thumbnail preview in the icon area
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const iconWrap = document.getElementById('dropLoadedIcon');
+      iconWrap.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-2xl" alt="preview">`;
+    };
+    reader.readAsDataURL(file);
+    // Images are sent as-is; store a flag so runAnalysis knows
+    state.pdfText = '__IMAGE__';
+    state.imageFile = file;
+    state.fileLoaded = true;
+    checkReady();
+    return;
+  }
+
+  // For PDFs: extract text with PDF.js
+  if (!window.pdfjsLib) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+
+      // Group text items by Y coordinate to reconstruct visual lines.
+      // Use sorted-clustering: items within 4 units vertically are on the same row.
+      // This is more robust than hash-bucketing which can split items at grid boundaries.
+      const allItems = [];
+      content.items.forEach(item => {
+        const s = item.str.trim();
+        if (!s) return;
+        allItems.push({ y: item.transform[5], x: item.transform[4], str: s });
+      });
+      // Sort by Y descending (top of page first)
+      allItems.sort((a, b) => b.y - a.y);
+
+      const YTHRESH = 4; // items within 4 pts vertically belong to same row
+      const rows = [];
+      let curRow = null;
+      allItems.forEach(item => {
+        if (!curRow || curRow.y - item.y > YTHRESH) {
+          curRow = { y: item.y, items: [] };
+          rows.push(curRow);
+        }
+        curRow.items.push(item);
+      });
+
+      rows.forEach(row => {
+        const sorted = row.items.sort((a, b) => a.x - b.x);
+        let line = '';
+        for (let j = 0; j < sorted.length; j++) {
+          if (j > 0) {
+            // Use 3 spaces for large X-gaps (column boundaries in multi-column layouts)
+            // vs 2 spaces for normal within-column item spacing.
+            // 100 pt threshold: typical column gap >> typical word/item gap.
+            const xGap = sorted[j].x - sorted[j-1].x;
+            line += xGap > 100 ? '   ' : '  ';
+          }
+          line += sorted[j].str;
+        }
+        fullText += line + '\n';
+      });
+    }
+
+    state.pdfText = fullText;
+    state.fileLoaded = fullText.trim().length > 50;
+    if (!state.fileLoaded) {
+      alert('Este PDF parece ser una imagen escaneada y no se pudo extraer el texto. Usa la pestaña "Pegar texto" y copia los valores manualmente.');
+      clearFile();
+    } else { checkReady(); }
+  } catch(e) {
+    console.error('PDF parse error:', e);
+    alert('No se pudo leer el PDF. Intenta con la opción "Pegar texto".');
+    clearFile();
+  }
+}
+
+function showExtractedText(e) {
+  if(e) e.stopPropagation();
+  if (!state.pdfText || state.pdfText === '__IMAGE__') return;
+  document.getElementById('textInput').value = state.pdfText;
+  switchTab('text');
+  document.getElementById('charCount').textContent = state.pdfText.length + ' caracteres';
+  document.getElementById('textInput').closest('section')?.scrollIntoView({behavior:'smooth'});
+}
+
+function clearFile(e) {
+  if(e) e.stopPropagation();
+  state.pdfText = ''; state.fileLoaded = false; state.imageFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('dropEmpty').classList.remove('hidden');
+  document.getElementById('dropLoaded').classList.add('hidden');
+  document.getElementById('dropBorder').classList.remove('drag-over');
+  // Restore icon to checkmark SVG
+  document.getElementById('dropLoadedIcon').innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  checkReady();
+}
+
+function applyFilter() {
+  const status = document.getElementById('filterStatus').value;
+  const cat = document.getElementById('filterCat').value;
+  document.querySelectorAll('#resultsTableBody tr').forEach(tr => {
+    const okStatus = status==='all' || tr.dataset.status===status;
+    const okCat = cat==='all' || tr.dataset.cat===cat;
+    tr.style.display = okStatus && okCat ? '' : 'none';
+  });
+}
+
+function toggleExpand(id) {
+  const body = document.getElementById(id);
+  const chevron = document.getElementById(id.replace('exp','chev'));
+  body.classList.toggle('open');
+  if(chevron) chevron.classList.toggle('open');
+}
+
+function resetAll() {
+  document.getElementById('resultsSection').classList.add('hidden');
+  document.getElementById('upload-section').classList.remove('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function scrollToTop() { window.scrollTo({top:0,behavior:'smooth'}); }
+
+// Dark mode
+let dark = false;
+function toggleDark() {
+  dark = !dark;
+  document.documentElement.classList.toggle('dark', dark);
+  document.getElementById('moonIcon').classList.toggle('hidden', dark);
+  document.getElementById('sunIcon').classList.toggle('hidden', !dark);
+}
+
+// Navbar scroll effect
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  if (window.scrollY > 10) {
+    nav.style.background = dark ? 'rgba(15,23,42,.92)' : 'rgba(255,255,255,.92)';
+    nav.style.backdropFilter = 'blur(16px)';
+    nav.style.boxShadow = '0 1px 24px rgba(0,0,0,.08)';
+  } else {
+    nav.style.background = '';
+    nav.style.backdropFilter = '';
+    nav.style.boxShadow = '';
+  }
+});
+
+// Textarea live
+document.getElementById('textInput').addEventListener('input', checkReady);
+</script>
+</body>
+</html>
