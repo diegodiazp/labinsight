@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- Google AdSense — reemplaza ca-pub-8195445674747587 con tu Publisher ID real -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8195445674747587" crossorigin="anonymous"></script>
 <style>
@@ -422,7 +423,14 @@ Glucosa: 95 mg/dL (Rango normal: 70-100)"></textarea>
   <!-- Action Plan -->
   <section class="py-10 px-4 bg-white">
     <div class="max-w-5xl mx-auto">
-      <h3 class="text-xl font-extrabold text-slate-900 mb-2">Tu Plan de Acción</h3>
+      <div class="flex items-center justify-between mb-2 flex-wrap gap-3">
+        <h3 class="text-xl font-extrabold text-slate-900">Tu Plan de Acción</h3>
+        <button onclick="exportPDF()" id="exportBtn"
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar PDF
+        </button>
+      </div>
       <p class="text-slate-500 text-sm mb-5">Recomendaciones personalizadas basadas en tus resultados</p>
       <div class="flex flex-wrap gap-2 mb-6">
         <button class="tab-btn active text-sm font-bold px-4 py-2.5 rounded-xl" onclick="showPlanTab('diet',this)">🥗 Alimentación</button>
@@ -1914,7 +1922,171 @@ function renderCharts(analyzed) {
 }
 
 // ═══════════════════════════════════════════
-// 7. MAIN ANALYSIS FLOW
+// 7. PDF EXPORT
+// ═══════════════════════════════════════════
+function exportPDF() {
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Generando…`;
+
+  const plan = currentPlanData;
+  const date = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+
+  // ── colour map (inline styles for PDF) ──────────────────
+  const CM = {
+    red:    { bg:'#fff1f2', border:'#fca5a5', head:'#b91c1c', text:'#7f1d1d' },
+    orange: { bg:'#fff7ed', border:'#fdba74', head:'#c2410c', text:'#7c2d12' },
+    yellow: { bg:'#fefce8', border:'#fde047', head:'#a16207', text:'#713f12' },
+    green:  { bg:'#f0fdf4', border:'#86efac', head:'#15803d', text:'#14532d' },
+    blue:   { bg:'#eff6ff', border:'#93c5fd', head:'#1d4ed8', text:'#1e3a8a' },
+    indigo: { bg:'#eef2ff', border:'#a5b4fc', head:'#4338ca', text:'#312e81' },
+    purple: { bg:'#faf5ff', border:'#d8b4fe', head:'#7e22ce', text:'#3b0764' },
+    teal:   { bg:'#f0fdfa', border:'#5eead4', head:'#0f766e', text:'#134e4a' },
+  };
+
+  // ── findings summary ─────────────────────────────────────
+  const notable = (window._lastAnalyzed||[]).filter(r=>r.status!=='normal');
+  const findingsHTML = notable.length === 0
+    ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px;color:#15803d;font-size:13px;font-weight:600">✅ Todos los valores analizados están dentro del rango normal.</div>`
+    : notable.map(r => {
+        const isAlarm = r.status === 'alarm';
+        const c = isAlarm ? CM.red : CM.yellow;
+        const icon = isAlarm ? '🔴' : '🟡';
+        const label = r.marker?.label || r.key;
+        const val = r.value != null ? `${r.value} ${r.marker?.unit||''}`.trim() : '';
+        const ref = (r.rmin != null || r.rmax != null)
+          ? `Ref: ${r.rmin??''}–${r.rmax??''} ${r.marker?.unit||''}`.trim() : '';
+        return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:18px">${icon}</span>
+          <div>
+            <p style="margin:0;font-size:13px;font-weight:700;color:${c.head}">${label}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:${c.text}">${val}${ref?' · '+ref:''}</p>
+          </div>
+        </div>`;
+      }).join('');
+
+  // ── plan tabs ─────────────────────────────────────────────
+  const TABS = [
+    { key:'diet',      emoji:'🥗', label:'Alimentación' },
+    { key:'exercise',  emoji:'🏃', label:'Ejercicio' },
+    { key:'supps',     emoji:'💊', label:'Suplementos' },
+    { key:'lifestyle', emoji:'😴', label:'Hábitos de Vida' },
+    { key:'followup',  emoji:'📅', label:'Seguimiento Médico' },
+  ];
+
+  const tabsHTML = TABS.map(tab => {
+    const sections = plan[tab.key] || [];
+    if (!sections.length) return '';
+    const sectionsHTML = sections.map(s => {
+      const c = CM[s.color] || CM.indigo;
+      const itemsHTML = s.items.map(item => {
+        const clean = item.replace(/<strong>/g,'').replace(/<\/strong>/g,'').replace(/<[^>]+>/g,' ');
+        return `<li style="display:flex;gap:8px;margin-bottom:6px;font-size:12px;color:#374151;line-height:1.55">
+          <span style="color:${c.head};font-weight:700;margin-top:1px;flex-shrink:0">→</span>
+          <span>${clean.trim()}</span>
+        </li>`;
+      }).join('');
+      return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+        <p style="margin:0 0 8px;font-size:12.5px;font-weight:700;color:${c.head}">${s.heading}</p>
+        <ul style="margin:0;padding:0;list-style:none">${itemsHTML}</ul>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;padding-bottom:6px;border-bottom:2px solid #e0e7ff">
+        <span style="font-size:18px">${tab.emoji}</span>
+        <h3 style="margin:0;font-size:15px;font-weight:800;color:#1e1b4b;letter-spacing:-0.3px">${tab.label}</h3>
+      </div>
+      ${sectionsHTML}
+    </div>`;
+  }).join('');
+
+  // ── score ─────────────────────────────────────────────────
+  const score = window._lastScore ?? null;
+  const scoreColor = score >= 80 ? '#15803d' : score >= 50 ? '#a16207' : '#b91c1c';
+  const scoreBg    = score >= 80 ? '#f0fdf4' : score >= 50 ? '#fefce8' : '#fff1f2';
+  const scoreLabel = score >= 80 ? 'Bueno' : score >= 50 ? 'Atención' : 'Requiere acción';
+  const scoreHTML  = score !== null ? `
+    <div style="background:${scoreBg};border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:22px">
+      <div style="text-align:center;min-width:60px">
+        <p style="margin:0;font-size:32px;font-weight:800;color:${scoreColor};line-height:1">${score}</p>
+        <p style="margin:2px 0 0;font-size:10px;font-weight:600;color:${scoreColor};text-transform:uppercase;letter-spacing:.5px">/ 100</p>
+      </div>
+      <div>
+        <p style="margin:0;font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</p>
+        <p style="margin:3px 0 0;font-size:12px;color:#6b7280">Puntuación general basada en todos los marcadores analizados</p>
+      </div>
+    </div>` : '';
+
+  // ── full PDF document ─────────────────────────────────────
+  const html = `
+  <div style="font-family:'Inter',Arial,sans-serif;color:#111827;background:#fff;padding:0;margin:0">
+
+    <!-- HEADER -->
+    <div style="background:linear-gradient(135deg,#3730a3 0%,#6366f1 100%);color:#fff;padding:28px 36px 24px;margin-bottom:28px;border-radius:0 0 16px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">🧬 LabInsight</p>
+          <p style="margin:5px 0 0;font-size:13px;opacity:.85;font-weight:500">Informe de Recomendaciones Personalizadas</p>
+        </div>
+        <div style="text-align:right;font-size:12px;opacity:.8;padding-top:2px">
+          <p style="margin:0;font-weight:600">${date}</p>
+          <p style="margin:3px 0 0;opacity:.7">Generado por LabInsight</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:0 36px 36px">
+
+      <!-- SCORE -->
+      ${scoreHTML}
+
+      <!-- FINDINGS -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e0e7ff">
+          <span style="font-size:18px">📋</span>
+          <h3 style="margin:0;font-size:15px;font-weight:800;color:#1e1b4b;letter-spacing:-0.3px">Hallazgos Importantes</h3>
+        </div>
+        ${findingsHTML}
+      </div>
+
+      <!-- PLAN TABS -->
+      ${tabsHTML}
+
+      <!-- DISCLAIMER -->
+      <div style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+        <p style="margin:0;font-size:11px;color:#64748b;line-height:1.6">
+          ⚠️ <strong>Aviso importante:</strong> Este informe es orientativo y ha sido generado automáticamente por inteligencia artificial a partir de los valores ingresados. No reemplaza la consulta médica ni el diagnóstico de un profesional de la salud. Consulta siempre a tu médico antes de hacer cambios en tu alimentación, suplementación o tratamiento.
+        </p>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="margin-top:20px;text-align:center">
+        <p style="margin:0;font-size:11px;color:#9ca3af">labinsight.app · ${date}</p>
+      </div>
+
+    </div>
+  </div>`;
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  html2pdf().set({
+    margin:       [0, 0, 10, 0],
+    filename:     `LabInsight-Recomendaciones-${new Date().toISOString().slice(0,10)}.pdf`,
+    image:        { type:'jpeg', quality:0.97 },
+    html2canvas:  { scale:2, useCORS:true, letterRendering:true },
+    jsPDF:        { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak:    { mode:['avoid-all','css','legacy'] },
+  }).from(container).save().then(() => {
+    document.body.removeChild(container);
+    btn.disabled = false;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar PDF`;
+  });
+}
+
+// ═══════════════════════════════════════════
+// 8. MAIN ANALYSIS FLOW
 // ═══════════════════════════════════════════
 // ── AdSense ────────────────────────────────────────────
 // Oculta el contenedor si AdSense no retorna anuncio; lo muestra si sí retorna.
@@ -1999,6 +2171,8 @@ async function runAnalysis() {
   const score = calculateScore(analyzed);
   const plan = generatePlan(analyzed);
   currentPlanData = plan;
+  window._lastAnalyzed = analyzed;
+  window._lastScore = score;
 
   const alarmList = analyzed.filter(r=>r.status==='alarm');
   const attnList  = analyzed.filter(r=>r.status==='attention');
