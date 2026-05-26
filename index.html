@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- Google AdSense — reemplaza ca-pub-8195445674747587 con tu Publisher ID real -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8195445674747587" crossorigin="anonymous"></script>
 <style>
@@ -55,6 +54,16 @@
 .ad-sidebar-left{left:8px}
 .ad-sidebar-right{right:8px}
 @media(max-width:1439px){.ad-sidebar-wrap{display:none!important}}
+
+/* ── PDF Print ───────────────────────────────────────── */
+#pdfPrintArea{display:none}
+@media print{
+  @page{margin:14mm 12mm;size:A4 portrait}
+  body>*:not(#pdfPrintArea){display:none!important}
+  #pdfPrintArea{display:block!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  .pdf-page-break{page-break-before:always;margin-top:0}
+}
 
 </style>
 </head>
@@ -425,10 +434,10 @@ Glucosa: 95 mg/dL (Rango normal: 70-100)"></textarea>
     <div class="max-w-5xl mx-auto">
       <div class="flex items-center justify-between mb-2 flex-wrap gap-3">
         <h3 class="text-xl font-extrabold text-slate-900">Tu Plan de Acción</h3>
-        <button onclick="exportPDF()" id="exportBtn"
+        <button onclick="exportPDF()" id="exportBtn" title="Se abrirá el diálogo de impresión — selecciona Guardar como PDF"
           class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar PDF
+          Guardar PDF
         </button>
       </div>
       <p class="text-slate-500 text-sm mb-5">Recomendaciones personalizadas basadas en tus resultados</p>
@@ -1925,14 +1934,10 @@ function renderCharts(analyzed) {
 // 7. PDF EXPORT
 // ═══════════════════════════════════════════
 function exportPDF() {
-  const btn = document.getElementById('exportBtn');
-  btn.disabled = true;
-  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Generando…`;
-
   const plan = currentPlanData;
   const date = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
 
-  // ── colour map (inline styles for PDF) ──────────────────
+  // ── colour map ───────────────────────────────────────────
   const CM = {
     red:    { bg:'#fff1f2', border:'#fca5a5', head:'#b91c1c', text:'#7f1d1d' },
     orange: { bg:'#fff7ed', border:'#fdba74', head:'#c2410c', text:'#7c2d12' },
@@ -1944,28 +1949,26 @@ function exportPDF() {
     teal:   { bg:'#f0fdfa', border:'#5eead4', head:'#0f766e', text:'#134e4a' },
   };
 
-  // ── findings summary ─────────────────────────────────────
+  // ── findings ─────────────────────────────────────────────
   const notable = (window._lastAnalyzed||[]).filter(r=>r.status!=='normal');
   const findingsHTML = notable.length === 0
-    ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px;color:#15803d;font-size:13px;font-weight:600">✅ Todos los valores analizados están dentro del rango normal.</div>`
+    ? `<div class="pdf-chip pdf-chip-green">✅ Todos los valores analizados están dentro del rango normal.</div>`
     : notable.map(r => {
         const isAlarm = r.status === 'alarm';
-        const c = isAlarm ? CM.red : CM.yellow;
-        const icon = isAlarm ? '🔴' : '🟡';
-        const label = r.marker?.label || r.key;
-        const val = r.value != null ? `${r.value} ${r.marker?.unit||''}`.trim() : '';
-        const ref = (r.rmin != null || r.rmax != null)
-          ? `Ref: ${r.rmin??''}–${r.rmax??''} ${r.marker?.unit||''}`.trim() : '';
-        return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
-          <span style="font-size:18px">${icon}</span>
-          <div>
-            <p style="margin:0;font-size:13px;font-weight:700;color:${c.head}">${label}</p>
-            <p style="margin:2px 0 0;font-size:12px;color:${c.text}">${val}${ref?' · '+ref:''}</p>
-          </div>
+        const chipCls = isAlarm ? 'pdf-chip-red' : 'pdf-chip-yellow';
+        const dot     = isAlarm ? 'pdf-dot-red' : 'pdf-dot-yellow';
+        const label   = r.marker?.label || r.key;
+        const val     = r.value != null ? `${r.value} ${r.marker?.unit||''}`.trim() : '';
+        const ref     = (r.rmin != null || r.rmax != null)
+          ? `Ref: ${r.rmin??''}–${r.rmax??''} ${r.marker?.unit||''}` : '';
+        return `<div class="pdf-chip ${chipCls}">
+          <span class="pdf-dot ${dot}"></span>
+          <span class="pdf-chip-label">${label}</span>
+          <span class="pdf-chip-val">${val}${ref?' · '+ref:''}</span>
         </div>`;
       }).join('');
 
-  // ── plan tabs ─────────────────────────────────────────────
+  // ── plan sections ─────────────────────────────────────────
   const TABS = [
     { key:'diet',      emoji:'🥗', label:'Alimentación' },
     { key:'exercise',  emoji:'🏃', label:'Ejercicio' },
@@ -1979,110 +1982,113 @@ function exportPDF() {
     if (!sections.length) return '';
     const sectionsHTML = sections.map(s => {
       const c = CM[s.color] || CM.indigo;
-      const itemsHTML = s.items.map(item => {
-        const clean = item.replace(/<strong>/g,'').replace(/<\/strong>/g,'').replace(/<[^>]+>/g,' ');
-        return `<li style="display:flex;gap:8px;margin-bottom:6px;font-size:12px;color:#374151;line-height:1.55">
-          <span style="color:${c.head};font-weight:700;margin-top:1px;flex-shrink:0">→</span>
-          <span>${clean.trim()}</span>
-        </li>`;
+      const items = s.items.map(item => {
+        const clean = item.replace(/<strong>/g,'<b>').replace(/<\/strong>/g,'</b>').replace(/<(?!b>|\/b>)[^>]+>/g,' ');
+        return `<li><span class="pdf-arrow" style="color:${c.head}">→</span><span>${clean.trim()}</span></li>`;
       }).join('');
-      return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:14px 16px;margin-bottom:10px">
-        <p style="margin:0 0 8px;font-size:12.5px;font-weight:700;color:${c.head}">${s.heading}</p>
-        <ul style="margin:0;padding:0;list-style:none">${itemsHTML}</ul>
+      return `<div class="pdf-card" style="background:${c.bg};border-color:${c.border}">
+        <p class="pdf-card-head" style="color:${c.head}">${s.heading}</p>
+        <ul class="pdf-list">${items}</ul>
       </div>`;
     }).join('');
-    return `<div style="margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px;margin:22px 0 10px;padding-bottom:6px;border-bottom:2px solid #e0e7ff">
-        <span style="font-size:18px">${tab.emoji}</span>
-        <h3 style="margin:0;font-size:15px;font-weight:800;color:#1e1b4b;letter-spacing:-0.3px">${tab.label}</h3>
+    return `<div class="pdf-section pdf-page-break">
+      <div class="pdf-section-head">
+        <span class="pdf-section-emoji">${tab.emoji}</span>
+        <h3 class="pdf-section-title">${tab.label}</h3>
       </div>
       ${sectionsHTML}
     </div>`;
   }).join('');
 
   // ── score ─────────────────────────────────────────────────
-  const score = window._lastScore ?? null;
-  const scoreColor = score >= 80 ? '#15803d' : score >= 50 ? '#a16207' : '#b91c1c';
-  const scoreBg    = score >= 80 ? '#f0fdf4' : score >= 50 ? '#fefce8' : '#fff1f2';
-  const scoreLabel = score >= 80 ? 'Bueno' : score >= 50 ? 'Atención' : 'Requiere acción';
-  const scoreHTML  = score !== null ? `
-    <div style="background:${scoreBg};border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:22px">
-      <div style="text-align:center;min-width:60px">
-        <p style="margin:0;font-size:32px;font-weight:800;color:${scoreColor};line-height:1">${score}</p>
-        <p style="margin:2px 0 0;font-size:10px;font-weight:600;color:${scoreColor};text-transform:uppercase;letter-spacing:.5px">/ 100</p>
-      </div>
+  const score    = window._lastScore ?? null;
+  const sColor   = score >= 80 ? '#15803d' : score >= 50 ? '#a16207' : '#b91c1c';
+  const sBg      = score >= 80 ? '#f0fdf4' : score >= 50 ? '#fefce8' : '#fff1f2';
+  const sLabel   = score >= 80 ? 'Bueno' : score >= 50 ? 'Atención' : 'Requiere acción';
+  const scoreHTML = score !== null ? `
+    <div class="pdf-score" style="background:${sBg}">
+      <div class="pdf-score-num" style="color:${sColor}">${score}<span class="pdf-score-denom">/100</span></div>
       <div>
-        <p style="margin:0;font-size:14px;font-weight:700;color:${scoreColor}">${scoreLabel}</p>
-        <p style="margin:3px 0 0;font-size:12px;color:#6b7280">Puntuación general basada en todos los marcadores analizados</p>
+        <p class="pdf-score-label" style="color:${sColor}">${sLabel}</p>
+        <p class="pdf-score-sub">Puntuación general basada en todos los marcadores analizados</p>
       </div>
     </div>` : '';
 
-  // ── full PDF document ─────────────────────────────────────
-  const html = `
-  <div style="font-family:'Inter',Arial,sans-serif;color:#111827;background:#fff;padding:0;margin:0">
+  // ── render into #pdfPrintArea ─────────────────────────────
+  document.getElementById('pdfPrintArea').innerHTML = `
+  <style>
+    #pdfPrintArea *{box-sizing:border-box;font-family:'Inter',Arial,sans-serif}
+    .pdf-header{background:linear-gradient(135deg,#3730a3,#6366f1);color:#fff;padding:24px 28px 20px;margin-bottom:24px}
+    .pdf-header-row{display:flex;justify-content:space-between;align-items:flex-start}
+    .pdf-logo{margin:0;font-size:20px;font-weight:800;letter-spacing:-.5px}
+    .pdf-tagline{margin:4px 0 0;font-size:12px;opacity:.85}
+    .pdf-date{text-align:right;font-size:11px;opacity:.8}
+    .pdf-date b{display:block;font-size:12px;font-weight:700}
+    .pdf-body{padding:0 28px 28px}
+    .pdf-score{display:flex;align-items:center;gap:16px;border-radius:10px;padding:12px 18px;margin-bottom:20px}
+    .pdf-score-num{font-size:34px;font-weight:800;line-height:1;min-width:58px;text-align:center}
+    .pdf-score-denom{font-size:13px;font-weight:600;margin-left:2px}
+    .pdf-score-label{margin:0;font-size:14px;font-weight:700}
+    .pdf-score-sub{margin:3px 0 0;font-size:11px;color:#6b7280}
+    .pdf-block-head{display:flex;align-items:center;gap:7px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e0e7ff}
+    .pdf-block-title{margin:0;font-size:14px;font-weight:800;color:#1e1b4b}
+    .pdf-block-emoji{font-size:16px}
+    .pdf-chip{display:flex;align-items:center;gap:8px;border-radius:8px;padding:9px 12px;margin-bottom:7px;border:1px solid transparent}
+    .pdf-chip-green{background:#f0fdf4;border-color:#86efac;color:#15803d;font-size:12px;font-weight:600}
+    .pdf-chip-red{background:#fff1f2;border-color:#fca5a5}
+    .pdf-chip-yellow{background:#fefce8;border-color:#fde047}
+    .pdf-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .pdf-dot-red{background:#ef4444}
+    .pdf-dot-yellow{background:#eab308}
+    .pdf-chip-label{font-size:12px;font-weight:700;flex:1}
+    .pdf-chip-red .pdf-chip-label{color:#b91c1c}
+    .pdf-chip-yellow .pdf-chip-label{color:#a16207}
+    .pdf-chip-val{font-size:11px;color:#6b7280}
+    .pdf-section{margin-bottom:4px}
+    .pdf-section-head{display:flex;align-items:center;gap:7px;margin:18px 0 8px;padding-bottom:5px;border-bottom:2px solid #e0e7ff}
+    .pdf-section-emoji{font-size:16px}
+    .pdf-section-title{margin:0;font-size:14px;font-weight:800;color:#1e1b4b}
+    .pdf-card{border:1px solid;border-radius:8px;padding:11px 14px;margin-bottom:8px;page-break-inside:avoid}
+    .pdf-card-head{margin:0 0 7px;font-size:12px;font-weight:700}
+    .pdf-list{margin:0;padding:0;list-style:none}
+    .pdf-list li{display:flex;gap:7px;margin-bottom:5px;font-size:11.5px;color:#374151;line-height:1.5;page-break-inside:avoid}
+    .pdf-arrow{font-weight:700;flex-shrink:0;margin-top:1px}
+    .pdf-disclaimer{margin-top:24px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:10.5px;color:#64748b;line-height:1.6}
+    .pdf-footer{margin-top:14px;text-align:center;font-size:10px;color:#9ca3af}
+  </style>
 
-    <!-- HEADER -->
-    <div style="background:linear-gradient(135deg,#3730a3 0%,#6366f1 100%);color:#fff;padding:28px 36px 24px;margin-bottom:28px;border-radius:0 0 16px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">🧬 LabInsight</p>
-          <p style="margin:5px 0 0;font-size:13px;opacity:.85;font-weight:500">Informe de Recomendaciones Personalizadas</p>
-        </div>
-        <div style="text-align:right;font-size:12px;opacity:.8;padding-top:2px">
-          <p style="margin:0;font-weight:600">${date}</p>
-          <p style="margin:3px 0 0;opacity:.7">Generado por LabInsight</p>
-        </div>
+  <div class="pdf-header">
+    <div class="pdf-header-row">
+      <div>
+        <p class="pdf-logo">🧬 LabInsight</p>
+        <p class="pdf-tagline">Informe de Recomendaciones Personalizadas</p>
       </div>
+      <div class="pdf-date"><b>${date}</b>Generado por LabInsight</div>
+    </div>
+  </div>
+
+  <div class="pdf-body">
+
+    ${scoreHTML}
+
+    <div style="margin-bottom:22px">
+      <div class="pdf-block-head">
+        <span class="pdf-block-emoji">📋</span>
+        <h3 class="pdf-block-title">Hallazgos Importantes</h3>
+      </div>
+      ${findingsHTML}
     </div>
 
-    <div style="padding:0 36px 36px">
+    ${tabsHTML}
 
-      <!-- SCORE -->
-      ${scoreHTML}
-
-      <!-- FINDINGS -->
-      <div style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e0e7ff">
-          <span style="font-size:18px">📋</span>
-          <h3 style="margin:0;font-size:15px;font-weight:800;color:#1e1b4b;letter-spacing:-0.3px">Hallazgos Importantes</h3>
-        </div>
-        ${findingsHTML}
-      </div>
-
-      <!-- PLAN TABS -->
-      ${tabsHTML}
-
-      <!-- DISCLAIMER -->
-      <div style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
-        <p style="margin:0;font-size:11px;color:#64748b;line-height:1.6">
-          ⚠️ <strong>Aviso importante:</strong> Este informe es orientativo y ha sido generado automáticamente por inteligencia artificial a partir de los valores ingresados. No reemplaza la consulta médica ni el diagnóstico de un profesional de la salud. Consulta siempre a tu médico antes de hacer cambios en tu alimentación, suplementación o tratamiento.
-        </p>
-      </div>
-
-      <!-- FOOTER -->
-      <div style="margin-top:20px;text-align:center">
-        <p style="margin:0;font-size:11px;color:#9ca3af">labinsight.app · ${date}</p>
-      </div>
-
+    <div class="pdf-disclaimer">
+      ⚠️ <b>Aviso importante:</b> Este informe es orientativo y generado automáticamente por inteligencia artificial. No reemplaza la consulta médica ni el diagnóstico de un profesional de la salud. Consulta siempre a tu médico antes de hacer cambios en tu alimentación, suplementación o tratamiento.
     </div>
+    <div class="pdf-footer">labinsight.app · ${date}</div>
+
   </div>`;
 
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  document.body.appendChild(container);
-
-  html2pdf().set({
-    margin:       [0, 0, 10, 0],
-    filename:     `LabInsight-Recomendaciones-${new Date().toISOString().slice(0,10)}.pdf`,
-    image:        { type:'jpeg', quality:0.97 },
-    html2canvas:  { scale:2, useCORS:true, letterRendering:true },
-    jsPDF:        { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak:    { mode:['avoid-all','css','legacy'] },
-  }).from(container).save().then(() => {
-    document.body.removeChild(container);
-    btn.disabled = false;
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar PDF`;
-  });
+  window.print();
 }
 
 // ═══════════════════════════════════════════
@@ -2439,5 +2445,6 @@ window.addEventListener('scroll', () => {
 // Textarea live
 document.getElementById('textInput').addEventListener('input', checkReady);
 </script>
+<div id="pdfPrintArea"></div>
 </body>
 </html>
